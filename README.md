@@ -1,4 +1,4 @@
-# Ledger — Personal Finance Tracker
+# Leager — Personal Finance Tracker
 
 A minimalist personal finance app for Android, built with Jetpack Compose. Track expenses, income, and transfers across multiple accounts with category budgets, recurring transactions, statistics, and optional PIN/biometric lock.
 
