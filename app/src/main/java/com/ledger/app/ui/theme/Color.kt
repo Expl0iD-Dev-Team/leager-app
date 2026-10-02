@@ -2,37 +2,55 @@ package com.ledger.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// ── Ledger Dark Theme ─────────────────────────────────────────
-val LedgerBgDark       = Color(0xFF0A0A0A)
-val LedgerSurfDark     = Color(0xFF131313)
-val LedgerSurf2Dark    = Color(0xFF1C1C1C)
-val LedgerBorderDark   = Color(0x0FFFFFFF)   // rgba(255,255,255,0.06)
-val LedgerBorderStrongDark = Color(0x1FFFFFFF) // rgba(255,255,255,0.12)
-val LedgerTextDark     = Color(0xFFF4F4F4)
-val LedgerMutedDark    = Color(0xFF8A8A8A)
-val LedgerFaintDark    = Color(0xFF5A5A5A)
-val LedgerLimeDark     = Color(0xFFC5FF4A)
-val LedgerRedDark      = Color(0xFFFF5B5B)
+// ── Dark theme ────────────────────────────────────────────────
+val LedgerBgDark           = Color(0xFF0F1013)
+val LedgerSurfDark         = Color(0xFF181A1F)
+val LedgerSurf2Dark        = Color(0xFF22252B)
+val LedgerBorderDark       = Color(0x12FFFFFF)   // rgba(255,255,255,0.07)
+val LedgerBorderStrongDark = Color(0x24FFFFFF)   // rgba(255,255,255,0.14)
+val LedgerTextDark         = Color(0xFFF5F6F8)
+val LedgerMutedDark        = Color(0xFF9BA0AA)
+val LedgerFaintDark        = Color(0xFF5F646E)
+val LedgerIncomeDark       = Color(0xFF3DDC97)
+val LedgerDangerDark       = Color(0xFFFF5C5C)
 
-// ── Ledger Light Theme ────────────────────────────────────────
-val LedgerBgLight      = Color(0xFFF4F4F0)
-val LedgerSurfLight    = Color(0xFFFFFFFF)
-val LedgerSurf2Light   = Color(0xFFEBEBE5)
-val LedgerBorderLight  = Color(0x14000000)   // rgba(0,0,0,0.08)
-val LedgerBorderStrongLight = Color(0x29000000) // rgba(0,0,0,0.16)
-val LedgerTextLight    = Color(0xFF0A0A0A)
-val LedgerMutedLight   = Color(0xFF5A5A5A)
-val LedgerFaintLight   = Color(0xFF9A9A9A)
-val LedgerLimeLight    = Color(0xFF3D8B00)
-val LedgerRedLight     = Color(0xFFD63838)
+// ── Light theme ───────────────────────────────────────────────
+val LedgerBgLight           = Color(0xFFF3F4F7)
+val LedgerSurfLight         = Color(0xFFFFFFFF)
+val LedgerSurf2Light        = Color(0xFFEBEDF1)
+val LedgerBorderLight       = Color(0x140B0C0F)  // rgba(11,12,15,0.08)
+val LedgerBorderStrongLight = Color(0x290B0C0F)  // rgba(11,12,15,0.16)
+val LedgerTextLight         = Color(0xFF111317)
+val LedgerMutedLight        = Color(0xFF6A707C)
+val LedgerFaintLight        = Color(0xFFA3A8B2)
+val LedgerIncomeLight       = Color(0xFF12A867)
+val LedgerDangerLight       = Color(0xFFE5484D)
 
-// ── Category palette (same in both themes) ───────────────────
-val CatLime   = Color(0xFFC5FF4A)
-val CatRed    = Color(0xFFFF6B5B)
-val CatCyan   = Color(0xFF52E0C4)
-val CatPurple = Color(0xFF9B8BFF)
-val CatYellow = Color(0xFFFFD24A)
-val CatPink   = Color(0xFFFF9DC4)
-val CatBlue   = Color(0xFF7BB8FF)
-val CatViolet = Color(0xFFE89AFF)
-val CatGray   = Color(0xFFA0A0A0)
+/**
+ * User-selectable accent (Settings → Accent color).
+ * The accent is used only as a fill (buttons, chips, active states, charts);
+ * text on top of it uses [onColor]. Never use the accent as a text color —
+ * several options are unreadable on the light background.
+ */
+enum class AccentColor(val label: String, val color: Color, val onColor: Color) {
+    LIME("Lime", Color(0xFFC5FF4A), Color(0xFF0B0C0F)),
+    VIOLET("Violet", Color(0xFF8B7CFF), Color(0xFFFFFFFF)),
+    BLUE("Blue", Color(0xFF4C8DFF), Color(0xFFFFFFFF)),
+    CORAL("Coral", Color(0xFFFF7A59), Color(0xFF1A0B05)),
+    MINT("Mint", Color(0xFF3DDC97), Color(0xFF04140C)),
+    AMBER("Amber", Color(0xFFFFB547), Color(0xFF1A1200));
+
+    companion object {
+        fun fromName(name: String?): AccentColor =
+            entries.firstOrNull { it.name == name } ?: LIME
+    }
+}
+
+/** Distinct colors offered when creating categories and accounts. */
+val CATEGORY_PALETTE = listOf(
+    "#4ADE80", "#FB923C", "#38BDF8", "#F472B6",
+    "#A78BFA", "#FACC15", "#E879F9", "#818CF8",
+    "#2DD4BF", "#F87171", "#94A3B8", "#60A5FA",
+    "#34D399", "#22D3EE", "#FBBF24", "#C5FF4A",
+    "#FF7A59", "#8B7CFF", "#4C8DFF", "#9CA3AF"
+)

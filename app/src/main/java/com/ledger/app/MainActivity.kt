@@ -7,8 +7,10 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -19,10 +21,12 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.fragment.app.FragmentActivity
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.ledger.app.data.prefs.ThemeMode
 import com.ledger.app.ui.components.LedgerBottomNav
 import com.ledger.app.ui.components.NavTab
 import com.ledger.app.ui.navigation.LedgerNavHost
 import com.ledger.app.ui.navigation.Routes
+import com.ledger.app.ui.theme.AccentColor
 import com.ledger.app.ui.theme.LedgerTheme
 import com.ledger.app.ui.theme.ledger
 import kotlinx.coroutines.flow.first
@@ -73,7 +77,7 @@ class MainActivity : FragmentActivity() {
             @Suppress("DEPRECATION")
             startActivityForResult(intent, RC_CSV_EXPORT)
         } catch (e: Exception) {
-            onError("Не удалось открыть менеджер файлов: ${e.localizedMessage ?: e.javaClass.simpleName}")
+            onError("Could not open the file manager: ${e.localizedMessage ?: e.javaClass.simpleName}")
             pendingExportCsv = null
             onExportError    = null
         }
@@ -89,7 +93,7 @@ class MainActivity : FragmentActivity() {
             startActivityForResult(intent, RC_CSV_PICK)
         } catch (e: Exception) {
             onCsvError?.invoke(
-                "Не удалось открыть файловый менеджер: ${e.localizedMessage ?: e.javaClass.simpleName}"
+                "Could not open the file manager: ${e.localizedMessage ?: e.javaClass.simpleName}"
             )
             onCsvResult = null
             onCsvError  = null
@@ -114,7 +118,7 @@ class MainActivity : FragmentActivity() {
                         stream.write(pendingExportCsv!!.toByteArray(Charsets.UTF_8))
                     }
                 } catch (e: Exception) {
-                    onExportError?.invoke("Ошибка записи файла: ${e.localizedMessage ?: e.javaClass.simpleName}")
+                    onExportError?.invoke("Could not write the file: ${e.localizedMessage ?: e.javaClass.simpleName}")
                 }
             }
             pendingExportCsv = null
@@ -132,7 +136,7 @@ class MainActivity : FragmentActivity() {
             if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
                 launchFilePicker()
             } else {
-                onCsvError?.invoke("Доступ к файлам запрещён. Разрешите его в настройках приложения.")
+                onCsvError?.invoke("File access denied. Allow it in the app settings.")
                 onCsvResult = null
                 onCsvError  = null
             }
@@ -148,22 +152,39 @@ class MainActivity : FragmentActivity() {
 
         val app = application as LedgerApplication
 
-        val darkTheme = runBlocking { app.prefsManager.isDarkTheme.first() }
+        val initialThemeMode = runBlocking { app.prefsManager.themeMode.first() }
+        val initialAccent = runBlocking { app.prefsManager.accentColor.first() }
         val pinEnabled = runBlocking { app.securityManager.isPinEnabled.first() }
 
         val startDestination = if (pinEnabled) Routes.PIN else Routes.HOME
 
         setContent {
-            val darkState by app.prefsManager.isDarkTheme.collectAsState(initial = darkTheme)
+            val themeMode by app.prefsManager.themeMode.collectAsState(initial = initialThemeMode)
+            val accentName by app.prefsManager.accentColor.collectAsState(initial = initialAccent)
+            val dark = when (themeMode) {
+                ThemeMode.DARK   -> true
+                ThemeMode.LIGHT  -> false
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+            }
 
-            LedgerTheme(darkTheme = darkState) {
+            // Status/navigation bar icons must follow the app theme, not the system one
+            DisposableEffect(dark) {
+                val transparent = android.graphics.Color.TRANSPARENT
+                val style = if (dark) SystemBarStyle.dark(transparent)
+                    else SystemBarStyle.light(transparent, transparent)
+                enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
+                onDispose {}
+            }
+
+            LedgerTheme(darkTheme = dark, accent = AccentColor.fromName(accentName)) {
                 val navController = rememberNavController()
                 val backEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = backEntry?.destination?.route
 
-                val showBottomNav = currentRoute != null
-                    && currentRoute != Routes.PIN
-                    && currentRoute != Routes.PIN_SETUP
+                // Floating nav only on the four top-level tabs
+                val showBottomNav = currentRoute != null && currentRoute in setOf(
+                    Routes.HOME, Routes.TRANSACTIONS, Routes.STATS, Routes.SETTINGS
+                )
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),

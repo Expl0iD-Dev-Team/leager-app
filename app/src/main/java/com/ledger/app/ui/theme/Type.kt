@@ -3,7 +3,6 @@ package com.ledger.app.ui.theme
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.googlefonts.Font
 import androidx.compose.ui.text.googlefonts.GoogleFont
@@ -16,95 +15,28 @@ private val fontsProvider = GoogleFont.Provider(
     certificates = R.array.com_google_android_gms_fonts_certs
 )
 
-private val ibmPlexMono = GoogleFont("IBM Plex Mono")
-private val ibmPlexSans = GoogleFont("IBM Plex Sans")
+// Manrope: close to the Figma concept's Plus Jakarta Sans, but with full Cyrillic
+// coverage — category names and notes are often Russian.
+private val manrope = GoogleFont("Manrope")
 
-val IbmPlexMonoFamily = FontFamily(
-    Font(googleFont = ibmPlexMono, fontProvider = fontsProvider, weight = FontWeight.Normal),
-    Font(googleFont = ibmPlexMono, fontProvider = fontsProvider, weight = FontWeight.Medium),
-    Font(googleFont = ibmPlexMono, fontProvider = fontsProvider, weight = FontWeight.SemiBold),
-)
-
-val IbmPlexSansFamily = FontFamily(
-    Font(googleFont = ibmPlexSans, fontProvider = fontsProvider, weight = FontWeight.Normal),
-    Font(googleFont = ibmPlexSans, fontProvider = fontsProvider, weight = FontWeight.Medium),
-    Font(googleFont = ibmPlexSans, fontProvider = fontsProvider, weight = FontWeight.SemiBold),
-    Font(googleFont = ibmPlexSans, fontProvider = fontsProvider, weight = FontWeight.Bold),
+/** Single typeface for the whole app (Concept A · Soft Fintech). */
+val AppFont = FontFamily(
+    Font(googleFont = manrope, fontProvider = fontsProvider, weight = FontWeight.Normal),
+    Font(googleFont = manrope, fontProvider = fontsProvider, weight = FontWeight.Medium),
+    Font(googleFont = manrope, fontProvider = fontsProvider, weight = FontWeight.SemiBold),
+    Font(googleFont = manrope, fontProvider = fontsProvider, weight = FontWeight.Bold),
+    Font(googleFont = manrope, fontProvider = fontsProvider, weight = FontWeight.ExtraBold),
 )
 
 val LedgerTypography = Typography(
-    // Display hero number (net worth, big amounts)
-    displayLarge = TextStyle(
-        fontFamily = IbmPlexMonoFamily,
-        fontWeight = FontWeight.Medium,
-        fontSize = 44.sp,
-        letterSpacing = (-1.5).sp,
-        lineHeight = 48.sp
-    ),
-    // Large stat number
-    displayMedium = TextStyle(
-        fontFamily = IbmPlexMonoFamily,
-        fontWeight = FontWeight.Medium,
-        fontSize = 28.sp,
-        letterSpacing = (-0.8).sp,
-        lineHeight = 32.sp
-    ),
-    // Screen title
-    titleLarge = TextStyle(
-        fontFamily = IbmPlexSansFamily,
-        fontWeight = FontWeight.Medium,
-        fontSize = 20.sp,
-        lineHeight = 24.sp
-    ),
-    // Section / card title
-    titleMedium = TextStyle(
-        fontFamily = IbmPlexSansFamily,
-        fontWeight = FontWeight.Medium,
-        fontSize = 16.sp,
-        lineHeight = 20.sp
-    ),
-    // Primary row text
-    bodyLarge = TextStyle(
-        fontFamily = IbmPlexSansFamily,
-        fontWeight = FontWeight.Medium,
-        fontSize = 14.sp,
-        lineHeight = 20.sp
-    ),
-    // Secondary row text
-    bodyMedium = TextStyle(
-        fontFamily = IbmPlexSansFamily,
-        fontWeight = FontWeight.Normal,
-        fontSize = 14.sp,
-        lineHeight = 20.sp
-    ),
-    // Small UI text
-    bodySmall = TextStyle(
-        fontFamily = IbmPlexSansFamily,
-        fontWeight = FontWeight.Normal,
-        fontSize = 12.sp,
-        lineHeight = 16.sp
-    ),
-    // Mono number (amounts in rows)
-    labelLarge = TextStyle(
-        fontFamily = IbmPlexMonoFamily,
-        fontWeight = FontWeight.Medium,
-        fontSize = 14.sp,
-        lineHeight = 20.sp
-    ),
-    // Caption / meta (time, category label)
-    labelMedium = TextStyle(
-        fontFamily = IbmPlexMonoFamily,
-        fontWeight = FontWeight.Normal,
-        fontSize = 11.sp,
-        letterSpacing = 0.4.sp,
-        lineHeight = 16.sp
-    ),
-    // Section header (all caps)
-    labelSmall = TextStyle(
-        fontFamily = IbmPlexMonoFamily,
-        fontWeight = FontWeight.Normal,
-        fontSize = 10.sp,
-        letterSpacing = 1.4.sp,
-        lineHeight = 14.sp
-    )
+    displayLarge = TextStyle(fontFamily = AppFont, fontWeight = FontWeight.ExtraBold, fontSize = 40.sp, letterSpacing = (-1.2).sp, lineHeight = 46.sp),
+    displayMedium = TextStyle(fontFamily = AppFont, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, letterSpacing = (-0.6).sp, lineHeight = 36.sp),
+    titleLarge = TextStyle(fontFamily = AppFont, fontWeight = FontWeight.Bold, fontSize = 18.sp, lineHeight = 24.sp),
+    titleMedium = TextStyle(fontFamily = AppFont, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, lineHeight = 20.sp),
+    bodyLarge = TextStyle(fontFamily = AppFont, fontWeight = FontWeight.Medium, fontSize = 15.sp, lineHeight = 20.sp),
+    bodyMedium = TextStyle(fontFamily = AppFont, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 20.sp),
+    bodySmall = TextStyle(fontFamily = AppFont, fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 16.sp),
+    labelLarge = TextStyle(fontFamily = AppFont, fontWeight = FontWeight.Bold, fontSize = 15.sp, lineHeight = 20.sp),
+    labelMedium = TextStyle(fontFamily = AppFont, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, lineHeight = 16.sp),
+    labelSmall = TextStyle(fontFamily = AppFont, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 1.sp, lineHeight = 14.sp)
 )

@@ -1,6 +1,5 @@
 package com.ledger.app.ui.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
@@ -16,11 +15,14 @@ import androidx.compose.ui.unit.sp
 import com.ledger.app.domain.model.Category
 import com.ledger.app.domain.model.Transaction
 import com.ledger.app.domain.model.TransactionType
-import com.ledger.app.ui.theme.IbmPlexMonoFamily
-import com.ledger.app.ui.theme.IbmPlexSansFamily
+import com.ledger.app.ui.theme.AppFont
 import com.ledger.app.ui.theme.ledger
 import com.ledger.app.util.formatHm
 import com.ledger.app.util.formatMoney
+import java.time.LocalTime
+
+/** Time of day, or null for operations without one (CSV imports are stored at 00:00). */
+fun Transaction.timeLabel(): String? = if (time == LocalTime.MIDNIGHT) null else time.formatHm()
 
 @Composable
 fun TransactionRow(
@@ -29,74 +31,76 @@ fun TransactionRow(
     accountName: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    showDivider: Boolean = true
+    toAccountName: String? = null,
+    meta: String? = transaction.timeLabel()
 ) {
     val c = MaterialTheme.ledger
-    val catColor = category?.color?.let { parseHexColor(it) } ?: c.muted
-    val isIncome = transaction.type == TransactionType.INCOME
-    val amountColor = if (isIncome) c.lime else c.text
+    val type = transaction.type
 
-    Column(modifier = modifier) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(horizontal = 20.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Color tick
-            Box(
-                modifier = Modifier
-                    .width(4.dp)
-                    .height(28.dp)
-                    .background(catColor)
-            )
+    val title = transaction.note.ifBlank {
+        category?.name ?: if (type == TransactionType.TRANSFER) "Transfer" else "—"
+    }
+    val subtitle = if (type == TransactionType.TRANSFER) {
+        "Transfer · $accountName → ${toAccountName ?: "—"}"
+    } else {
+        listOfNotNull(category?.name, accountName.ifBlank { null }).joinToString(" · ")
+    }
+    val amount = Math.abs(transaction.amount).formatMoney()
+    val (amountText, amountColor) = when (type) {
+        TransactionType.INCOME   -> "+$amount" to c.income
+        TransactionType.EXPENSE  -> "−$amount" to c.text
+        TransactionType.TRANSFER -> amount to c.muted
+    }
 
-            Spacer(Modifier.width(12.dp))
-
-            // Content
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = transaction.note.ifBlank { category?.name ?: "—" },
-                    fontFamily = IbmPlexSansFamily,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 14.sp,
-                    color = c.text,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = "${transaction.time.formatHm()} · ${category?.name?.uppercase() ?: "—"} · ${accountName.uppercase()}",
-                    fontFamily = IbmPlexMonoFamily,
-                    fontSize = 10.sp,
-                    letterSpacing = 0.4.sp,
-                    color = c.muted,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            Spacer(Modifier.width(8.dp))
-
-            // Amount
-            val prefix = if (isIncome) "+" else "−"
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        CategoryBubble(category)
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "$prefix${Math.abs(transaction.amount).formatMoney()}",
-                fontFamily = IbmPlexMonoFamily,
-                fontWeight = FontWeight.Medium,
+                title,
+                fontFamily = AppFont,
+                fontWeight = FontWeight.SemiBold,
                 fontSize = 15.sp,
-                color = amountColor
+                color = c.text,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                subtitle,
+                fontFamily = AppFont,
+                fontSize = 13.sp,
+                color = c.muted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 2.dp)
             )
         }
-
-        if (showDivider) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .padding(start = 36.dp)
-                    .background(c.border)
+        Spacer(Modifier.width(10.dp))
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                amountText,
+                fontFamily = AppFont,
+                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp,
+                color = amountColor,
+                maxLines = 1
             )
+            if (meta != null) {
+                Text(
+                    meta,
+                    fontFamily = AppFont,
+                    fontSize = 12.sp,
+                    color = c.faint,
+                    maxLines = 1,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
         }
     }
 }

@@ -1,30 +1,32 @@
 package com.ledger.app.ui.screen.accounts
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ledger.app.LedgerApplication
 import com.ledger.app.domain.model.Account
-import com.ledger.app.ui.components.AccountDialog
-import com.ledger.app.ui.components.parseHexColor
-import com.ledger.app.ui.theme.IbmPlexMonoFamily
-import com.ledger.app.ui.theme.IbmPlexSansFamily
+import com.ledger.app.ui.components.*
+import com.ledger.app.ui.theme.AppFont
 import com.ledger.app.ui.theme.ledger
 import com.ledger.app.util.formatMoney
+import com.ledger.app.util.monthLong
+import java.time.LocalDate
+import java.util.Locale
 
 @Composable
 fun AccountsScreen(
@@ -34,6 +36,7 @@ fun AccountsScreen(
     val vm: AccountsViewModel = viewModel()
     val state by vm.state.collectAsStateWithLifecycle()
     val c = MaterialTheme.ledger
+    val month = monthLong(LocalDate.now().monthValue)
 
     if (state.showDialog) {
         AccountDialog(
@@ -46,60 +49,63 @@ fun AccountsScreen(
         )
     }
 
-    LazyColumn(modifier = Modifier.fillMaxSize().background(c.bg)) {
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-                    .padding(top = 20.dp, bottom = 16.dp)
-                    .drawBehind {
-                        drawLine(c.border,
-                            androidx.compose.ui.geometry.Offset(0f, size.height),
-                            androidx.compose.ui.geometry.Offset(size.width, size.height),
-                            1.dp.toPx())
-                    },
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Bottom
-            ) {
-                Column {
-                    Text("${state.accounts.size} СЧЕТОВ",
-                        fontFamily = IbmPlexMonoFamily, fontSize = 10.sp,
-                        letterSpacing = 1.2.sp, color = c.faint)
-                    Text(state.netWorth.formatMoney(),
-                        fontFamily = IbmPlexMonoFamily, fontWeight = FontWeight.Medium,
-                        fontSize = 30.sp, letterSpacing = (-1).sp, lineHeight = 34.sp,
-                        color = c.text, modifier = Modifier.padding(top = 6.dp))
-                    Text("ИТОГО · ₽ ЭКВИВАЛЕНТ",
-                        fontFamily = IbmPlexMonoFamily, fontSize = 11.sp,
-                        letterSpacing = 1.0.sp, color = c.muted)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(c.bg)
+    ) {
+        TopBar(
+            title = "Accounts",
+            onBack = onBackClick,
+            trailing = { CircleIconButton(LedgerIcons.Plus, onClick = vm::openCreate, contentDescription = "New account") }
+        )
+
+        LazyColumn(
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp)
+        ) {
+            item {
+                LedgerCard(modifier = Modifier.fillMaxWidth(), radius = 26.dp, contentPadding = PaddingValues(20.dp)) {
+                    Text("Net worth · ₽ equivalent", fontFamily = AppFont, fontWeight = FontWeight.Medium, fontSize = 13.sp, color = c.muted)
+                    Text(
+                        state.netWorth.formatMoney(),
+                        style = MaterialTheme.typography.displayMedium,
+                        color = c.text,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                    Text(
+                        if (state.accounts.size == 1) "1 account" else "${state.accounts.size} accounts",
+                        fontFamily = AppFont, fontWeight = FontWeight.Medium, fontSize = 13.sp, color = c.muted,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
                 }
-                Box(
-                    modifier = Modifier.size(36.dp).border(1.dp, c.text).clickable { vm.openCreate() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("+", fontFamily = IbmPlexMonoFamily, fontSize = 20.sp, color = c.text)
+            }
+
+            item {
+                if (state.accounts.isEmpty()) {
+                    LedgerCard(modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(0.dp)) {
+                        EmptyState(LedgerIcons.Wallet, "No accounts", "Tap + to add a card, cash or savings account.")
+                    }
+                } else {
+                    LedgerCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        radius = 24.dp,
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)
+                    ) {
+                        state.accounts.forEach { account ->
+                            AccountRow(account = account, totalRub = state.netWorth, onClick = { vm.openEdit(account) })
+                        }
+                    }
+                }
+            }
+
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    StatBox("$month in", "+${state.monthIncome.formatMoney()}", c.income, LedgerIcons.ArrowIn, Modifier.weight(1f))
+                    StatBox("$month out", "−${state.monthExpense.formatMoney()}", c.text, LedgerIcons.ArrowOut, Modifier.weight(1f))
                 }
             }
         }
-
-        items(state.accounts) { account ->
-            AccountRow(account = account, totalRub = state.netWorth, onClick = { vm.openEdit(account) })
-        }
-
-        item {
-            Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
-                Text("ЗА МЕСЯЦ", fontFamily = IbmPlexMonoFamily, fontSize = 10.sp,
-                    letterSpacing = 1.4.sp, color = c.faint)
-                Row(modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    StatBox("ПОСТУПИЛО", "+${state.monthIncome.formatMoney()}", c.lime, Modifier.weight(1f))
-                    StatBox("ПОТРАЧЕНО", "−${state.monthExpense.formatMoney()}", c.red, Modifier.weight(1f))
-                }
-            }
-        }
-
-        item { Spacer(Modifier.height(80.dp)) }
     }
 }
 
@@ -108,52 +114,55 @@ private fun AccountRow(account: Account, totalRub: Double, onClick: () -> Unit) 
     val c = MaterialTheme.ledger
     val color = parseHexColor(account.color)
     val rate = when (account.currency) { "USD" -> 92.0; "EUR" -> 99.0; else -> 1.0 }
-    val pct = if (totalRub > 0 && account.includeInTotal) (account.balance * rate) / totalRub else 0.0
+    val share = if (totalRub > 0 && account.includeInTotal) (account.balance * rate) / totalRub else 0.0
+    val details = listOfNotNull(
+        account.type.label,
+        account.last4?.let { "•• $it" },
+        account.currency,
+        if (!account.includeInTotal) "not in total" else null
+    ).joinToString(" · ")
 
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 18.dp)
-            .drawBehind {
-                drawLine(c.border,
-                    androidx.compose.ui.geometry.Offset(0f, size.height),
-                    androidx.compose.ui.geometry.Offset(size.width, size.height),
-                    1.dp.toPx())
-            },
-        verticalAlignment = Alignment.CenterVertically
+            .padding(vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Box(modifier = Modifier.width(8.dp).height(56.dp).background(color))
-        Spacer(Modifier.width(14.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Row(modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
-                Text(account.name, fontFamily = IbmPlexSansFamily,
-                    fontWeight = FontWeight.Medium, fontSize = 16.sp, color = c.text)
-                Text(account.balance.formatMoney(account.currency), fontFamily = IbmPlexMonoFamily,
-                    fontWeight = FontWeight.Medium, fontSize = 18.sp, color = c.text)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconBubble(accountIcon(account.type), color, size = 44.dp)
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    account.name,
+                    fontFamily = AppFont, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = c.text,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis
+                )
+                Text(details, fontFamily = AppFont, fontWeight = FontWeight.Medium, fontSize = 12.sp, color = c.muted)
             }
-            Row(modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
-                horizontalArrangement = Arrangement.SpaceBetween) {
-                val suffix = if (!account.includeInTotal) " · НЕ В ИТОГЕ" else ""
-                Text("${account.type.label.uppercase()}${account.last4?.let { " · ****$it" } ?: ""} · ${account.currency}$suffix",
-                    fontFamily = IbmPlexMonoFamily, fontSize = 10.sp, letterSpacing = 1.0.sp, color = c.muted)
-                Text("${"%.1f".format(pct * 100)}%",
-                    fontFamily = IbmPlexMonoFamily, fontSize = 10.sp, color = c.faint)
-            }
-            Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(c.border).padding(top = 8.dp)) {
-                Box(modifier = Modifier.fillMaxWidth(pct.toFloat().coerceIn(0f, 1f)).fillMaxHeight().background(color))
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    account.balance.formatMoney(account.currency),
+                    fontFamily = AppFont, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = c.text
+                )
+                Text(
+                    String.format(Locale("ru", "RU"), "%.1f%%", share * 100),
+                    fontFamily = AppFont, fontWeight = FontWeight.Medium, fontSize = 12.sp, color = c.faint
+                )
             }
         }
+        ProgressBar(fraction = share.toFloat(), color = color, height = 4.dp)
     }
 }
 
 @Composable
-private fun StatBox(label: String, value: String, valueColor: androidx.compose.ui.graphics.Color, modifier: Modifier) {
+private fun StatBox(label: String, value: String, valueColor: Color, icon: ImageVector, modifier: Modifier) {
     val c = MaterialTheme.ledger
-    Column(modifier = modifier.border(1.dp, c.border).padding(12.dp)) {
-        Text(label, fontFamily = IbmPlexMonoFamily, fontSize = 9.sp, letterSpacing = 1.2.sp, color = c.faint)
-        Text(value, fontFamily = IbmPlexMonoFamily, fontWeight = FontWeight.Medium,
-            fontSize = 16.sp, color = valueColor, modifier = Modifier.padding(top = 6.dp))
+    LedgerCard(modifier = modifier, radius = 20.dp, contentPadding = PaddingValues(16.dp), verticalSpacing = 10.dp) {
+        Icon(icon, contentDescription = null, tint = c.muted, modifier = Modifier.size(18.dp))
+        Column {
+            Text(label, fontFamily = AppFont, fontWeight = FontWeight.Medium, fontSize = 12.sp, color = c.muted)
+            Text(value, fontFamily = AppFont, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = valueColor, maxLines = 1)
+        }
     }
 }

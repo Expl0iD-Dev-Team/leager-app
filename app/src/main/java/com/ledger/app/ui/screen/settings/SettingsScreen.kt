@@ -8,36 +8,39 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ledger.app.LedgerApplication
 import com.ledger.app.MainActivity
 import com.ledger.app.data.CsvImporter
-import com.ledger.app.ui.theme.IbmPlexMonoFamily
-import com.ledger.app.ui.theme.IbmPlexSansFamily
+import com.ledger.app.data.prefs.ThemeMode
+import com.ledger.app.ui.components.*
+import com.ledger.app.ui.theme.AccentColor
+import com.ledger.app.ui.theme.AppFont
 import com.ledger.app.ui.theme.ledger
 
 @Composable
 fun SettingsScreen(
     app: LedgerApplication,
-    onBackClick: () -> Unit,
-    onSetPin: (() -> Unit)? = null
+    onSetPin: (() -> Unit)? = null,
+    onAccountsClick: () -> Unit,
+    onCategoriesClick: () -> Unit
 ) {
     val vm: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory(app))
     val state by vm.state.collectAsState()
@@ -59,7 +62,7 @@ fun SettingsScreen(
             activity?.openCsvExport(
                 csvContent = es.csv,
                 onError    = { vm.showExportError(it) }
-            ) ?: vm.showExportError("Ошибка: активность недоступна")
+            ) ?: vm.showExportError("Error: activity is not available")
             vm.onExportHandled()
         }
     }
@@ -76,115 +79,148 @@ fun SettingsScreen(
             imported  = status.imported,
             skipped   = status.skipped,
             errors    = status.errors,
+            onDismiss = vm::dismissImport
+        )
+        is ImportStatus.Error -> LedgerDialog(
+            title = "Import failed",
             onDismiss = vm::dismissImport,
-            c         = c
-        )
-        is ImportStatus.Error -> AlertDialog(
-            onDismissRequest  = vm::dismissImport,
-            containerColor    = c.surface,
-            titleContentColor = c.text,
-            title = {
-                Text("Ошибка импорта", fontFamily = IbmPlexMonoFamily,
-                    fontSize = 12.sp, letterSpacing = 1.4.sp)
-            },
-            text = {
-                Text(status.message, fontFamily = IbmPlexMonoFamily,
-                    fontSize = 12.sp, color = c.red)
-            },
-            confirmButton = {
-                Text("OK", fontFamily = IbmPlexMonoFamily, fontSize = 11.sp,
-                    letterSpacing = 1.2.sp, color = c.lime,
-                    modifier = Modifier.clickable(onClick = vm::dismissImport).padding(8.dp))
-            }
-        )
+            dismissText = "OK"
+        ) {
+            Text(status.message, style = MaterialTheme.typography.bodyMedium, color = c.danger)
+        }
         else -> {}
     }
 
     val exportStatus = state.exportStatus
     if (exportStatus is ExportStatus.Error) {
-        AlertDialog(
-            onDismissRequest  = vm::dismissExport,
-            containerColor    = c.surface,
-            titleContentColor = c.text,
-            title = {
-                Text("Ошибка экспорта", fontFamily = IbmPlexMonoFamily,
-                    fontSize = 12.sp, letterSpacing = 1.4.sp)
-            },
-            text = {
-                Text(exportStatus.message, fontFamily = IbmPlexMonoFamily,
-                    fontSize = 12.sp, color = c.red)
-            },
-            confirmButton = {
-                Text("OK", fontFamily = IbmPlexMonoFamily, fontSize = 11.sp,
-                    letterSpacing = 1.2.sp, color = c.lime,
-                    modifier = Modifier.clickable(onClick = vm::dismissExport).padding(8.dp))
-            }
-        )
+        LedgerDialog(title = "Export failed", onDismiss = vm::dismissExport, dismissText = "OK") {
+            Text(exportStatus.message, style = MaterialTheme.typography.bodyMedium, color = c.danger)
+        }
     }
 
-    if (showFormatDialog) CsvFormatDialog(onDismiss = { showFormatDialog = false }, c = c)
+    if (showFormatDialog) CsvFormatDialog(onDismiss = { showFormatDialog = false })
 
     if (showUsdDialog) RateEditDialog(
-        title = "КУРС USD / RUB", initialValue = state.usdRate,
+        title = "USD / RUB rate", initialValue = state.usdRate,
         onDismiss = { showUsdDialog = false },
         onSave = { vm.setUsdRate(it); showUsdDialog = false }
     )
     if (showEurDialog) RateEditDialog(
-        title = "КУРС EUR / RUB", initialValue = state.eurRate,
+        title = "EUR / RUB rate", initialValue = state.eurRate,
         onDismiss = { showEurDialog = false },
         onSave = { vm.setEurRate(it); showEurDialog = false }
     )
 
-    if (showClearConfirm) AlertDialog(
-        onDismissRequest = { showClearConfirm = false },
-        title = { Text("Очистить данные?", fontFamily = IbmPlexSansFamily) },
-        text  = { Text("Все транзакции будут удалены. Действие необратимо.", fontFamily = IbmPlexSansFamily) },
-        confirmButton = {
-            Text("Удалить", fontFamily = IbmPlexMonoFamily, color = c.red,
-                modifier = Modifier.clickable { vm.clearData(); showClearConfirm = false }.padding(8.dp))
-        },
-        dismissButton = {
-            Text("Отмена", fontFamily = IbmPlexMonoFamily, color = c.muted,
-                modifier = Modifier.clickable { showClearConfirm = false }.padding(8.dp))
-        }
-    )
+    if (showClearConfirm) LedgerDialog(
+        title = "Clear all data?",
+        onDismiss = { showClearConfirm = false },
+        confirmText = "Delete",
+        onConfirm = { vm.clearData(); showClearConfirm = false },
+        destructive = true
+    ) {
+        Text(
+            "All operations will be deleted and account balances reset. This can't be undone.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = c.muted
+        )
+    }
 
     // ── Screen body ──────────────────────────────────────────────────────────
 
-    LazyColumn(modifier = Modifier.fillMaxSize().background(c.bg)) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(c.bg),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 10.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(22.dp)
+    ) {
+        item { ScreenTitle("Settings") }
+
         item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-                    .padding(top = 20.dp, bottom = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Настройки", fontFamily = IbmPlexSansFamily,
-                    fontWeight = FontWeight.Medium, fontSize = 20.sp, color = c.text)
+            SettingsGroup("Appearance") {
+                Column(
+                    modifier = Modifier.padding(vertical = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text("Theme", fontFamily = AppFont, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = c.text)
+                    SegmentedControl(
+                        options = ThemeMode.entries.toList(),
+                        selected = state.themeMode,
+                        onSelect = vm::setThemeMode,
+                        label = { mode ->
+                            when (mode) {
+                                ThemeMode.DARK   -> "Dark"
+                                ThemeMode.LIGHT  -> "Light"
+                                ThemeMode.SYSTEM -> "System"
+                            }
+                        },
+                        icon = { mode ->
+                            when (mode) {
+                                ThemeMode.DARK   -> LedgerIcons.Moon
+                                ThemeMode.LIGHT  -> LedgerIcons.Sun
+                                ThemeMode.SYSTEM -> LedgerIcons.Monitor
+                            }
+                        },
+                        height = 40.dp,
+                        containerColor = c.surface2,
+                        bordered = false
+                    )
+                }
+                Column(
+                    modifier = Modifier.padding(top = 4.dp, bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    val selectedAccent = AccentColor.fromName(state.accentColor)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Accent color", fontFamily = AppFont, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = c.text)
+                        Text(selectedAccent.label, fontFamily = AppFont, fontWeight = FontWeight.Medium, fontSize = 14.sp, color = c.muted)
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        AccentColor.entries.forEach { accent ->
+                            AccentSwatch(
+                                accent = accent,
+                                selected = accent == selectedAccent,
+                                onClick = { vm.setAccentColor(accent.name) }
+                            )
+                        }
+                    }
+                }
             }
         }
 
         item {
-            SettingsSection("БЕЗОПАСНОСТЬ") {
-                SettingsRow(
-                    title    = "PIN-защита",
-                    subtitle = if (state.pinEnabled) "Включена" else "Выключена",
-                    trailing = {
-                        Switch(checked = state.pinEnabled, onCheckedChange = { vm.togglePin() },
-                            colors = switchColors(c))
-                    }
-                )
-                SettingsRow(
-                    title    = "Биометрия",
-                    subtitle = if (state.biometricEnabled) "Включена" else "Выключена",
-                    trailing = {
-                        Switch(
-                            checked = state.biometricEnabled,
-                            onCheckedChange = { if (state.pinEnabled) vm.toggleBiometric() },
-                            enabled = state.pinEnabled,
-                            colors = switchColors(c)
+            SettingsGroup("Manage") {
+                SettingsItem(LedgerIcons.Wallet, "Accounts", value = state.accountsCount.toString(), onClick = onAccountsClick)
+                SettingsItem(LedgerIcons.Tag, "Categories & budgets", value = state.categoriesCount.toString(), onClick = onCategoriesClick)
+            }
+        }
+
+        item {
+            SettingsGroup("Currency") {
+                Column(
+                    modifier = Modifier.padding(vertical = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text("Show net worth in", fontFamily = AppFont, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = c.text)
+                    SegmentedControl(
+                        options = listOf("RUB", "USD", "EUR"),
+                        selected = state.netWorthCurrency,
+                        onSelect = vm::setNetWorthCurrency,
+                        label = { it },
+                        height = 38.dp,
+                        containerColor = c.surface2,
+                        bordered = false
+                    )
+                }
+                SettingsItem(LedgerIcons.Coins, "USD / RUB", value = "%.2f".format(state.usdRate), onClick = { showUsdDialog = true })
+                SettingsItem(LedgerIcons.Coins, "EUR / RUB", value = "%.2f".format(state.eurRate), onClick = { showEurDialog = true })
+                SettingsItem(
+                    LedgerIcons.Globe,
+                    "Look up today's rates",
+                    subtitle = "Opens the browser",
+                    onClick = {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=USD+RUB+EUR+rate+today"))
                         )
                     }
                 )
@@ -192,276 +228,97 @@ fun SettingsScreen(
         }
 
         item {
-            SettingsSection("ОФОРМЛЕНИЕ") {
-                SettingsRow(
-                    title    = "Тема",
-                    subtitle = if (state.darkTheme) "Тёмная" else "Светлая",
-                    trailing = {
-                        Switch(checked = state.darkTheme, onCheckedChange = { vm.toggleTheme() },
-                            colors = switchColors(c))
-                    }
-                )
-            }
-        }
-
-        item {
-            SettingsSection("ВАЛЮТА") {
-                SettingsRow(title = "USD / RUB", subtitle = "%.2f".format(state.usdRate),
-                    onClick = { showUsdDialog = true })
-                SettingsRow(title = "EUR / RUB", subtitle = "%.2f".format(state.eurRate),
-                    onClick = { showEurDialog = true })
-                SettingsRow(
-                    title   = "Найти курс в Google",
-                    subtitle = "Открыть браузер",
-                    onClick = {
-                        context.startActivity(Intent(Intent.ACTION_VIEW,
-                            Uri.parse("https://www.google.com/search?q=USD+RUB+EUR+rate+today")))
-                    }
-                )
-                Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
-                    Text("NET WORTH · ВАЛЮТА ОТОБРАЖЕНИЯ",
-                        fontFamily = IbmPlexMonoFamily, fontSize = 9.sp,
-                        letterSpacing = 1.2.sp, color = c.faint,
-                        modifier = Modifier.padding(bottom = 8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("RUB", "USD", "EUR").forEach { cur ->
-                            val sel = state.netWorthCurrency == cur
-                            Box(
-                                modifier = Modifier
-                                    .border(1.dp, if (sel) c.text else c.border)
-                                    .background(if (sel) c.text else Color.Transparent)
-                                    .clickable { vm.setNetWorthCurrency(cur) }
-                                    .padding(horizontal = 20.dp, vertical = 8.dp)
-                            ) {
-                                Text(cur, fontFamily = IbmPlexMonoFamily, fontSize = 12.sp,
-                                    color = if (sel) c.bg else c.muted)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        item {
-            SettingsSection("ДАННЫЕ") {
+            SettingsGroup("Data") {
                 val isImporting = state.importStatus is ImportStatus.Importing
-
-                SettingsRow(
-                    title    = "Импорт CSV",
-                    subtitle = if (isImporting) "Импортируем…" else "Загрузить транзакции из файла",
-                    onClick  = {
+                SettingsItem(
+                    LedgerIcons.Upload,
+                    "Import CSV",
+                    subtitle = if (isImporting) "Importing…" else "Bulk-add operations from a file",
+                    onClick = {
                         if (!isImporting) {
                             activity?.openCsvPicker(
                                 onResult = { uri -> uri?.let { vm.importCsv(it) } },
                                 onError  = { vm.showImportError(it) }
-                            ) ?: vm.showImportError("Ошибка: активность недоступна")
+                            ) ?: vm.showImportError("Error: activity is not available")
                         }
                     }
                 )
-
-                SettingsRow(
-                    title   = "Формат CSV-файла",
-                    subtitle = "Посмотреть структуру и пример",
-                    onClick  = { showFormatDialog = true }
-                )
-
+                SettingsItem(LedgerIcons.FileText, "CSV format", subtitle = "Columns and an example file", onClick = { showFormatDialog = true })
                 val isExporting = state.exportStatus is ExportStatus.Building
-                SettingsRow(
-                    title   = "Экспорт CSV",
-                    subtitle = if (isExporting) "Формируем файл…" else "Выгрузить все операции в файл",
-                    onClick  = { if (!isExporting) vm.startExport() }
+                SettingsItem(
+                    LedgerIcons.Download,
+                    "Export CSV",
+                    subtitle = if (isExporting) "Preparing the file…" else "Save all operations to a file",
+                    onClick = { if (!isExporting) vm.startExport() }
                 )
-
-                SettingsRow(
-                    title    = "Очистить данные",
-                    subtitle = "Удалить все операции",
-                    danger   = true,
-                    onClick  = { showClearConfirm = true }
+                SettingsItem(
+                    LedgerIcons.Trash,
+                    "Clear data",
+                    subtitle = "Delete all operations",
+                    danger = true,
+                    onClick = { showClearConfirm = true }
                 )
             }
         }
 
         item {
-            Spacer(Modifier.height(40.dp))
-            Text("LEDGER · v1.0.0", fontFamily = IbmPlexMonoFamily, fontSize = 10.sp,
-                letterSpacing = 1.4.sp, color = c.faint,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
-        }
-
-        item { Spacer(Modifier.height(80.dp)) }
-    }
-}
-
-// ── Import result dialog ─────────────────────────────────────────────────────
-
-@Composable
-private fun ImportDoneDialog(
-    imported: Int,
-    skipped: Int,
-    errors: List<String>,
-    onDismiss: () -> Unit,
-    c: com.ledger.app.ui.theme.LedgerColors
-) {
-    AlertDialog(
-        onDismissRequest  = onDismiss,
-        containerColor    = c.surface,
-        titleContentColor = c.text,
-        title = {
-            Text("Импорт завершён", fontFamily = IbmPlexMonoFamily,
-                fontSize = 12.sp, letterSpacing = 1.4.sp)
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    "Импортировано: $imported\nПропущено:     $skipped",
-                    fontFamily = IbmPlexMonoFamily, fontSize = 13.sp, color = c.muted
+            SettingsGroup("Security") {
+                SettingsItem(
+                    LedgerIcons.Lock,
+                    "PIN lock",
+                    subtitle = if (state.pinEnabled) "On" else "Off",
+                    trailing = { LedgerSwitch(checked = state.pinEnabled, onCheckedChange = { vm.togglePin() }) }
                 )
-                if (errors.isNotEmpty()) {
-                    Spacer(Modifier.height(4.dp))
-                    Text("Ошибки:", fontFamily = IbmPlexMonoFamily,
-                        fontSize = 10.sp, letterSpacing = 1.sp, color = c.faint)
-                    Column(
-                        modifier = Modifier
-                            .heightIn(max = 160.dp)
-                            .verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        errors.take(50).forEach { err ->
-                            Text("• $err", fontFamily = IbmPlexMonoFamily,
-                                fontSize = 11.sp, color = c.red)
-                        }
-                        if (errors.size > 50) {
-                            Text("… ещё ${errors.size - 50} ошибок",
-                                fontFamily = IbmPlexMonoFamily, fontSize = 11.sp, color = c.faint)
-                        }
+                SettingsItem(
+                    LedgerIcons.Fingerprint,
+                    "Biometric unlock",
+                    subtitle = if (state.pinEnabled) (if (state.biometricEnabled) "On" else "Off") else "Requires a PIN",
+                    trailing = {
+                        LedgerSwitch(
+                            checked = state.biometricEnabled,
+                            onCheckedChange = { vm.toggleBiometric() },
+                            enabled = state.pinEnabled
+                        )
                     }
-                }
-            }
-        },
-        confirmButton = {
-            Text("OK", fontFamily = IbmPlexMonoFamily, fontSize = 11.sp,
-                letterSpacing = 1.2.sp, color = c.lime,
-                modifier = Modifier.clickable(onClick = onDismiss).padding(8.dp))
-        }
-    )
-}
-
-// ── CSV format info dialog ───────────────────────────────────────────────────
-
-@Composable
-private fun CsvFormatDialog(onDismiss: () -> Unit, c: com.ledger.app.ui.theme.LedgerColors) {
-    AlertDialog(
-        onDismissRequest  = onDismiss,
-        containerColor    = c.surface,
-        titleContentColor = c.text,
-        title = {
-            Text("ФОРМАТ CSV", fontFamily = IbmPlexMonoFamily,
-                fontSize = 12.sp, letterSpacing = 1.4.sp)
-        },
-        text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(CsvImporter.FORMAT_DESCRIPTION,
-                    fontFamily = IbmPlexMonoFamily, fontSize = 11.sp,
-                    lineHeight = 16.sp, color = c.muted)
-
-                Text("ПРИМЕР ФАЙЛА", fontFamily = IbmPlexMonoFamily,
-                    fontSize = 9.sp, letterSpacing = 1.2.sp, color = c.faint)
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(c.bg)
-                        .border(1.dp, c.border)
-                        .padding(10.dp)
-                ) {
-                    Text(CsvImporter.TEMPLATE_CSV,
-                        fontFamily = IbmPlexMonoFamily, fontSize = 10.sp,
-                        lineHeight = 15.sp, color = c.text)
-                }
-
-                Text(
-                    "Сохраните файл в Downloads или любую доступную папку.\n" +
-                    "Нажмите «Импорт CSV» и выберите файл.",
-                    fontFamily = IbmPlexMonoFamily, fontSize = 11.sp,
-                    lineHeight = 16.sp, color = c.muted
                 )
             }
-        },
-        confirmButton = {
-            Text("ЗАКРЫТЬ", fontFamily = IbmPlexMonoFamily, fontSize = 11.sp,
-                letterSpacing = 1.2.sp, color = c.lime,
-                modifier = Modifier.clickable(onClick = onDismiss).padding(8.dp))
         }
-    )
-}
 
-// ── Supporting composables ───────────────────────────────────────────────────
-
-@Composable
-private fun RateEditDialog(
-    title: String, initialValue: Double,
-    onDismiss: () -> Unit, onSave: (Double) -> Unit
-) {
-    val c = MaterialTheme.ledger
-    var text by remember { mutableStateOf("%.2f".format(initialValue)) }
-
-    AlertDialog(
-        onDismissRequest  = onDismiss,
-        containerColor    = c.surface,
-        titleContentColor = c.text,
-        title = { Text(title, fontFamily = IbmPlexMonoFamily, fontSize = 12.sp, letterSpacing = 1.4.sp) },
-        text = {
-            BasicTextField(
-                value = text,
-                onValueChange = { s -> if (s.isEmpty() || s.matches(Regex("\\d*\\.?\\d*"))) text = s },
-                textStyle = TextStyle(fontFamily = IbmPlexMonoFamily, fontSize = 18.sp, color = c.text),
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .drawBehind {
-                        drawLine(c.borderStrong,
-                            androidx.compose.ui.geometry.Offset(0f, size.height),
-                            androidx.compose.ui.geometry.Offset(size.width, size.height),
-                            1.dp.toPx())
-                    }
-                    .padding(bottom = 8.dp)
+        item {
+            Text(
+                "Leager · v1.0.0",
+                fontFamily = AppFont,
+                fontWeight = FontWeight.Medium,
+                fontSize = 12.sp,
+                color = c.faint,
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
-        },
-        confirmButton = {
-            Text("СОХРАНИТЬ", fontFamily = IbmPlexMonoFamily, fontSize = 11.sp,
-                letterSpacing = 1.2.sp, color = c.lime,
-                modifier = Modifier.clickable { text.toDoubleOrNull()?.let { onSave(it) } }.padding(8.dp))
-        },
-        dismissButton = {
-            Text("ОТМЕНА", fontFamily = IbmPlexMonoFamily, fontSize = 11.sp, color = c.muted,
-                modifier = Modifier.clickable(onClick = onDismiss).padding(8.dp))
         }
-    )
+    }
 }
 
-@Composable
-private fun switchColors(c: com.ledger.app.ui.theme.LedgerColors) = SwitchDefaults.colors(
-    checkedThumbColor   = c.bg,   checkedTrackColor   = c.lime,
-    uncheckedThumbColor = c.muted, uncheckedTrackColor = c.surface2
-)
+// ── Building blocks ─────────────────────────────────────────────────────────
 
 @Composable
-private fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
-    val c = MaterialTheme.ledger
-    Column(modifier = Modifier.padding(top = 24.dp)) {
-        Text(title, fontFamily = IbmPlexMonoFamily, fontSize = 9.sp,
-            letterSpacing = 1.4.sp, color = c.faint,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
-        Column(content = content)
+private fun SettingsGroup(title: String, content: @Composable ColumnScope.() -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        GroupLabel(title)
+        LedgerCard(
+            modifier = Modifier.fillMaxWidth(),
+            radius = 24.dp,
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+            content = content
+        )
     }
 }
 
 @Composable
-private fun SettingsRow(
-    title: String, subtitle: String = "",
+private fun SettingsItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String? = null,
+    value: String? = null,
     danger: Boolean = false,
     onClick: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null
@@ -471,26 +328,159 @@ private fun SettingsRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = onClick != null) { onClick?.invoke() }
-            .padding(horizontal = 20.dp, vertical = 16.dp)
-            .drawBehind {
-                drawLine(c.border,
-                    androidx.compose.ui.geometry.Offset(0f, size.height),
-                    androidx.compose.ui.geometry.Offset(size.width, size.height),
-                    1.dp.toPx())
-            },
+            .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        IconBubble(
+            icon,
+            color = if (danger) c.danger else c.text,
+            size = 38.dp,
+            corner = 12.dp,
+            background = c.surface2
+        )
+        Spacer(Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, fontFamily = IbmPlexSansFamily, fontWeight = FontWeight.Medium,
-                fontSize = 14.sp, color = if (danger) c.red else c.text)
-            if (subtitle.isNotEmpty()) {
-                Text(subtitle, fontFamily = IbmPlexMonoFamily, fontSize = 11.sp,
-                    color = c.muted, modifier = Modifier.padding(top = 2.dp))
+            Text(
+                title,
+                fontFamily = AppFont,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 15.sp,
+                color = if (danger) c.danger else c.text
+            )
+            if (subtitle != null) {
+                Text(subtitle, fontFamily = AppFont, fontWeight = FontWeight.Medium, fontSize = 12.sp, color = c.muted)
             }
         }
-        trailing?.invoke()
-        if (trailing == null && onClick != null) {
-            Text("›", fontFamily = IbmPlexMonoFamily, fontSize = 18.sp, color = c.muted)
+        if (value != null) {
+            Text(value, fontFamily = AppFont, fontWeight = FontWeight.Medium, fontSize = 14.sp, color = c.muted)
+            Spacer(Modifier.width(8.dp))
         }
+        if (trailing != null) {
+            trailing()
+        } else if (onClick != null) {
+            Icon(LedgerIcons.ChevronRight, contentDescription = null, tint = c.faint, modifier = Modifier.size(18.dp))
+        }
+    }
+}
+
+@Composable
+private fun AccentSwatch(accent: AccentColor, selected: Boolean, onClick: () -> Unit) {
+    val c = MaterialTheme.ledger
+    Box(
+        modifier = Modifier
+            .size(46.dp)
+            .clip(CircleShape)
+            .border(2.dp, if (selected) c.text else Color.Transparent, CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(accent.color),
+            contentAlignment = Alignment.Center
+        ) {
+            if (selected) {
+                Icon(LedgerIcons.Check, contentDescription = accent.label, tint = accent.onColor, modifier = Modifier.size(18.dp))
+            }
+        }
+    }
+}
+
+// ── Dialogs ──────────────────────────────────────────────────────────────────
+
+@Composable
+private fun ImportDoneDialog(
+    imported: Int,
+    skipped: Int,
+    errors: List<String>,
+    onDismiss: () -> Unit
+) {
+    val c = MaterialTheme.ledger
+    LedgerDialog(title = "Import complete", onDismiss = onDismiss, dismissText = "OK") {
+        Text(
+            "Imported: $imported\nSkipped: $skipped",
+            style = MaterialTheme.typography.bodyLarge,
+            color = c.text
+        )
+        if (errors.isNotEmpty()) {
+            GroupLabel("Errors")
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 180.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                errors.take(50).forEach { err ->
+                    Text("• $err", fontFamily = AppFont, fontSize = 12.sp, color = c.danger)
+                }
+                if (errors.size > 50) {
+                    Text("… and ${errors.size - 50} more", fontFamily = AppFont, fontSize = 12.sp, color = c.faint)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CsvFormatDialog(onDismiss: () -> Unit) {
+    val c = MaterialTheme.ledger
+    LedgerDialog(title = "CSV format", onDismiss = onDismiss, dismissText = "Close") {
+        Text(
+            CsvImporter.FORMAT_DESCRIPTION,
+            fontFamily = AppFont,
+            fontSize = 13.sp,
+            lineHeight = 19.sp,
+            color = c.muted
+        )
+        GroupLabel("Example file")
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(c.surface2)
+                .padding(12.dp)
+        ) {
+            Text(
+                CsvImporter.TEMPLATE_CSV,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                fontSize = 11.sp,
+                lineHeight = 16.sp,
+                color = c.text
+            )
+        }
+        Text(
+            "Save the file to Downloads (or any folder you can access), then tap “Import CSV” and pick it.",
+            fontFamily = AppFont,
+            fontSize = 13.sp,
+            lineHeight = 19.sp,
+            color = c.muted
+        )
+    }
+}
+
+@Composable
+private fun RateEditDialog(
+    title: String,
+    initialValue: Double,
+    onDismiss: () -> Unit,
+    onSave: (Double) -> Unit
+) {
+    var text by remember { mutableStateOf("%.2f".format(java.util.Locale.US, initialValue)) }
+    LedgerDialog(
+        title = title,
+        onDismiss = onDismiss,
+        confirmText = "Save",
+        onConfirm = { text.toDoubleOrNull()?.let { onSave(it) } }
+    ) {
+        LedgerTextField(
+            value = text,
+            onValueChange = { s ->
+                val v = s.replace(',', '.')
+                if (v.isEmpty() || v.matches(Regex("\\d*\\.?\\d*"))) text = v
+            },
+            keyboardType = KeyboardType.Decimal
+        )
     }
 }

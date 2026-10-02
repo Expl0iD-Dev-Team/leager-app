@@ -82,8 +82,8 @@ class CsvImporter(
 
         if (missing.isNotEmpty()) {
             return Result(0, 0, listOf(
-                "Не найдены обязательные колонки: ${missing.joinToString(", ")}.\n" +
-                "Проверьте заголовок файла (первая строка)."
+                "Required columns not found: ${missing.joinToString(", ")}.\n" +
+                "Check the file header (first line)."
             ))
         }
 
@@ -109,21 +109,21 @@ class CsvImporter(
 
                 if (accName.isBlank()) {
                     skipped++
-                    errors.add("Строка $rowNum: пустое поле «счёт»")
+                    errors.add("Row $rowNum: the “account” field is empty")
                     return@forEachIndexed
                 }
 
                 val date = parseDate(dateStr)
                     ?: throw IllegalArgumentException(
-                        "Неверная дата «$dateStr» — используйте ГГГГ-ММ-ДД или ДД.ММ.ГГГГ"
+                        "Invalid date “$dateStr” — use YYYY-MM-DD or DD.MM.YYYY"
                     )
 
                 val rawAmount = amountStr.toDoubleOrNull()?.let { abs(it) }
-                    ?: throw IllegalArgumentException("Неверная сумма «$amountStr»")
+                    ?: throw IllegalArgumentException("Invalid amount “$amountStr”")
 
                 val txType = parseType(typeStr)
                     ?: throw IllegalArgumentException(
-                        "Неизвестный тип «$typeStr» — ожидается income/доход, expense/расход, transfer/перевод"
+                        "Unknown type “$typeStr” — expected income, expense or transfer"
                     )
 
                 val amount  = if (txType == TransactionType.INCOME) rawAmount else -rawAmount
@@ -156,7 +156,7 @@ class CsvImporter(
                         accountRepo.adjustBalance(toAccount.id, rawAmount)
                 }
             } catch (e: Exception) {
-                errors.add("Строка $rowNum: ${e.message}")
+                errors.add("Row $rowNum: ${e.message}")
                 skipped++
             }
         }
@@ -254,8 +254,11 @@ class CsvImporter(
         cache: MutableMap<String, Category>
     ): Category {
         val catType = if (txType == TransactionType.INCOME) CategoryType.INCOME else CategoryType.EXPENSE
+        // Blank category -> a catch-all one; reuse a legacy Russian-named one if it already exists
         val effectiveName = name.ifBlank {
-            if (catType == CategoryType.INCOME) "Прочие доходы" else "Прочие расходы"
+            val candidates = if (catType == CategoryType.INCOME) listOf("Other income", "Прочие доходы")
+                else listOf("Other expenses", "Прочие расходы")
+            candidates.firstOrNull { cache.containsKey("${catType.name}:${it.lowercase()}") } ?: candidates.first()
         }
         val key = "${catType.name}:${effectiveName.lowercase()}"
         return cache[key] ?: run {
@@ -281,24 +284,24 @@ class CsvImporter(
          * fill in rows and import back into the app.
          */
         const val TEMPLATE_CSV = "date,amount,type,account,category,to_account,note\n" +
-            "2024-01-15,500,expense,Сбер,Продукты,,Покупка в Магните\n" +
-            "2024-01-16,50000,income,Тинькофф,Зарплата,,Январь\n" +
-            "2024-01-17,10000,transfer,Сбер,,Тинькофф,Перевод на карту"
+            "2024-01-15,500,expense,Sber,Groceries,,Supermarket\n" +
+            "2024-01-16,50000,income,Tinkoff,Salary,,January\n" +
+            "2024-01-17,10000,transfer,Sber,,Tinkoff,Top up card"
 
         /** Human-readable format description shown in the UI. */
         const val FORMAT_DESCRIPTION =
-            "Обязательные колонки (любой порядок, рус./англ. названия):\n" +
-            "  date / дата       — дата: ГГГГ-ММ-ДД или ДД.ММ.ГГГГ\n" +
-            "  amount / сумма    — сумма (положительное число)\n" +
-            "  type / тип        — income/доход · expense/расход · transfer/перевод\n" +
-            "  account / счёт    — название счёта списания\n\n" +
-            "Необязательные колонки:\n" +
-            "  category / категория\n" +
-            "  to_account / счёт назначения  — для переводов\n" +
-            "  note / комментарий\n\n" +
-            "Разделитель: запятая, точка с запятой или Tab.\n" +
-            "Кодировка: UTF-8 (или UTF-8 with BOM — Excel).\n" +
-            "Дробная часть: точка или запятая (500.50 или 500,50)."
+            "Required columns (any order; English or Russian headers):\n" +
+            "  date      — YYYY-MM-DD or DD.MM.YYYY\n" +
+            "  amount    — positive number\n" +
+            "  type      — income · expense · transfer\n" +
+            "  account   — account the money leaves (or arrives to, for income)\n\n" +
+            "Optional columns:\n" +
+            "  category\n" +
+            "  to_account — destination account, for transfers\n" +
+            "  note\n\n" +
+            "Separator: comma, semicolon or Tab.\n" +
+            "Encoding: UTF-8 (or UTF-8 with BOM from Excel).\n" +
+            "Decimals: dot or comma (500.50 or 500,50)."
 
         private val COLORS = listOf(
             "#C5FF4A", "#FF6B5B", "#52E0C4", "#9B8BFF",

@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ledger.app.ui.theme.IbmPlexMonoFamily
+import com.ledger.app.ui.theme.AppFont
 import com.ledger.app.ui.theme.ledger
 
 @Composable
@@ -33,7 +33,7 @@ fun RadialRing(
     labelSize: TextUnit = 14.sp
 ) {
     val c = MaterialTheme.ledger
-    val ringColor = color ?: c.lime
+    val ringColor = color ?: c.accent
     val ringTrack = trackColor ?: c.surface2
     val clamped = value.coerceIn(0f, 1f)
 
@@ -67,7 +67,7 @@ fun RadialRing(
                 useCenter = false,
                 topLeft = topLeft,
                 size = arcSize,
-                style = Stroke(width = stroke, cap = StrokeCap.Butt)
+                style = Stroke(width = stroke, cap = StrokeCap.Round)
             )
         }
 
@@ -76,7 +76,7 @@ fun RadialRing(
                 if (label.isNotEmpty()) {
                     Text(
                         text = label,
-                        fontFamily = IbmPlexMonoFamily,
+                        fontFamily = AppFont,
                         fontWeight = FontWeight.Medium,
                         fontSize = labelSize,
                         color = c.text,
@@ -86,7 +86,7 @@ fun RadialRing(
                 if (sublabel.isNotEmpty()) {
                     Text(
                         text = sublabel,
-                        fontFamily = IbmPlexMonoFamily,
+                        fontFamily = AppFont,
                         fontSize = (labelSize.value - 4f).sp,
                         color = c.muted,
                         lineHeight = (labelSize.value - 2f).sp

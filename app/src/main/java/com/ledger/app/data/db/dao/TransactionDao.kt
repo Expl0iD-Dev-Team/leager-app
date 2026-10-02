@@ -65,7 +65,7 @@ interface TransactionDao {
     suspend fun getTotalIncome(fromDay: Long, toDay: Long): Double
 
     @Query("""
-        SELECT categoryId, COALESCE(SUM(ABS(amount)), 0.0) as total
+        SELECT categoryId, COALESCE(SUM(ABS(amount)), 0.0) as total, COUNT(*) as opsCount
         FROM transactions
         WHERE type = 'EXPENSE' AND dateEpochDay >= :fromDay AND dateEpochDay <= :toDay
         GROUP BY categoryId
@@ -82,7 +82,7 @@ interface TransactionDao {
     suspend fun getDailyExpense(fromDay: Long, toDay: Long): List<DailyTotal>
 
     @Query("""
-        SELECT categoryId, COALESCE(SUM(amount), 0.0) as total
+        SELECT categoryId, COALESCE(SUM(amount), 0.0) as total, COUNT(*) as opsCount
         FROM transactions
         WHERE type = 'INCOME' AND dateEpochDay >= :fromDay AND dateEpochDay <= :toDay
         GROUP BY categoryId
@@ -90,5 +90,5 @@ interface TransactionDao {
     suspend fun getIncomeByCategory(fromDay: Long, toDay: Long): List<CategoryTotal>
 }
 
-data class CategoryTotal(val categoryId: String, val total: Double)
+data class CategoryTotal(val categoryId: String, val total: Double, val opsCount: Int)
 data class DailyTotal(val dateEpochDay: Long, val total: Double)

@@ -1,6 +1,5 @@
 package com.ledger.app.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -21,12 +20,20 @@ data class LedgerColors(
     val text: Color,
     val muted: Color,
     val faint: Color,
-    val lime: Color,
-    val red: Color,
+    /** User-selected accent — fills only. */
+    val accent: Color,
+    /** Text / icons drawn on top of [accent]. */
+    val onAccent: Color,
+    /** Translucent accent for selected backgrounds. */
+    val accentSoft: Color,
+    /** Positive amounts (income). */
+    val income: Color,
+    /** Errors, destructive actions, over-budget. */
+    val danger: Color,
     val isDark: Boolean
 )
 
-val LedgerDarkColors = LedgerColors(
+private fun darkColors(accent: AccentColor) = LedgerColors(
     bg           = LedgerBgDark,
     surface      = LedgerSurfDark,
     surface2     = LedgerSurf2Dark,
@@ -35,12 +42,15 @@ val LedgerDarkColors = LedgerColors(
     text         = LedgerTextDark,
     muted        = LedgerMutedDark,
     faint        = LedgerFaintDark,
-    lime         = LedgerLimeDark,
-    red          = LedgerRedDark,
+    accent       = accent.color,
+    onAccent     = accent.onColor,
+    accentSoft   = accent.color.copy(alpha = 0.16f),
+    income       = LedgerIncomeDark,
+    danger       = LedgerDangerDark,
     isDark       = true
 )
 
-val LedgerLightColors = LedgerColors(
+private fun lightColors(accent: AccentColor) = LedgerColors(
     bg           = LedgerBgLight,
     surface      = LedgerSurfLight,
     surface2     = LedgerSurf2Light,
@@ -49,42 +59,49 @@ val LedgerLightColors = LedgerColors(
     text         = LedgerTextLight,
     muted        = LedgerMutedLight,
     faint        = LedgerFaintLight,
-    lime         = LedgerLimeLight,
-    red          = LedgerRedLight,
+    accent       = accent.color,
+    onAccent     = accent.onColor,
+    accentSoft   = accent.color.copy(alpha = 0.22f),
+    income       = LedgerIncomeLight,
+    danger       = LedgerDangerLight,
     isDark       = false
 )
 
-val LocalLedgerColors = staticCompositionLocalOf { LedgerDarkColors }
+val LocalLedgerColors = staticCompositionLocalOf { darkColors(AccentColor.LIME) }
 
-private fun buildColorScheme(c: LedgerColors): ColorScheme = darkColorScheme(
-    primary            = c.lime,
-    onPrimary          = Color(0xFF0A0A0A),
-    secondary          = c.text,
-    onSecondary        = c.bg,
-    tertiary           = c.red,
-    background         = c.bg,
-    surface            = c.surface,
-    surfaceVariant     = c.surface2,
-    onBackground       = c.text,
-    onSurface          = c.text,
-    onSurfaceVariant   = c.muted,
-    outline            = c.border,
-    outlineVariant     = c.borderStrong,
-    error              = c.red,
-    onError            = Color.White
-)
+private fun buildColorScheme(c: LedgerColors): ColorScheme {
+    val base = if (c.isDark) darkColorScheme() else lightColorScheme()
+    return base.copy(
+        primary            = c.accent,
+        onPrimary          = c.onAccent,
+        secondary          = c.text,
+        onSecondary        = c.bg,
+        tertiary           = c.danger,
+        background         = c.bg,
+        surface            = c.surface,
+        surfaceVariant     = c.surface2,
+        surfaceContainerHigh = c.surface,
+        onBackground       = c.text,
+        onSurface          = c.text,
+        onSurfaceVariant   = c.muted,
+        outline            = c.border,
+        outlineVariant     = c.borderStrong,
+        error              = c.danger,
+        onError            = Color.White
+    )
+}
 
 @Composable
 fun LedgerTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean,
+    accent: AccentColor = AccentColor.LIME,
     content: @Composable () -> Unit
 ) {
-    val ledgerColors = if (darkTheme) LedgerDarkColors else LedgerLightColors
-    val colorScheme = buildColorScheme(ledgerColors)
+    val ledgerColors = if (darkTheme) darkColors(accent) else lightColors(accent)
 
     CompositionLocalProvider(LocalLedgerColors provides ledgerColors) {
         MaterialTheme(
-            colorScheme = colorScheme,
+            colorScheme = buildColorScheme(ledgerColors),
             typography = LedgerTypography,
             content = content
         )

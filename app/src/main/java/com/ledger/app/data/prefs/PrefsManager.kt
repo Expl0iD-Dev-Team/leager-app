@@ -11,17 +11,29 @@ import kotlinx.coroutines.flow.map
 
 private val Context.appDataStore by preferencesDataStore(name = "app_prefs")
 
+enum class ThemeMode { DARK, LIGHT, SYSTEM }
+
 class PrefsManager(private val context: Context) {
 
     private object Keys {
+        /** Legacy boolean; read only to migrate users who picked light theme before [THEME_MODE] existed. */
         val DARK_THEME = booleanPreferencesKey("dark_theme")
+        val THEME_MODE = stringPreferencesKey("theme_mode")
+        val ACCENT_COLOR = stringPreferencesKey("accent_color")
         val USD_RATE = doublePreferencesKey("usd_rate")
         val EUR_RATE = doublePreferencesKey("eur_rate")
         val NET_WORTH_CURRENCY = stringPreferencesKey("net_worth_currency")
     }
 
-    val isDarkTheme: Flow<Boolean> = context.appDataStore.data
-        .map { prefs -> prefs[Keys.DARK_THEME] ?: true }
+    val themeMode: Flow<ThemeMode> = context.appDataStore.data
+        .map { prefs ->
+            prefs[Keys.THEME_MODE]?.let { stored -> ThemeMode.entries.firstOrNull { it.name == stored } }
+                ?: if (prefs[Keys.DARK_THEME] == false) ThemeMode.LIGHT else ThemeMode.DARK
+        }
+
+    /** Name of the selected accent (see ui.theme.AccentColor). */
+    val accentColor: Flow<String> = context.appDataStore.data
+        .map { prefs -> prefs[Keys.ACCENT_COLOR] ?: "LIME" }
 
     val usdRate: Flow<Double> = context.appDataStore.data
         .map { prefs -> prefs[Keys.USD_RATE] ?: 92.0 }
@@ -32,8 +44,12 @@ class PrefsManager(private val context: Context) {
     val netWorthCurrency: Flow<String> = context.appDataStore.data
         .map { prefs -> prefs[Keys.NET_WORTH_CURRENCY] ?: "RUB" }
 
-    suspend fun setDarkTheme(dark: Boolean) {
-        context.appDataStore.edit { prefs -> prefs[Keys.DARK_THEME] = dark }
+    suspend fun setThemeMode(mode: ThemeMode) {
+        context.appDataStore.edit { prefs -> prefs[Keys.THEME_MODE] = mode.name }
+    }
+
+    suspend fun setAccentColor(name: String) {
+        context.appDataStore.edit { prefs -> prefs[Keys.ACCENT_COLOR] = name }
     }
 
     suspend fun setUsdRate(rate: Double) {

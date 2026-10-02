@@ -5,11 +5,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -19,8 +22,9 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ledger.app.LedgerApplication
-import com.ledger.app.ui.theme.IbmPlexMonoFamily
-import com.ledger.app.ui.theme.IbmPlexSansFamily
+import com.ledger.app.ui.components.IconBubble
+import com.ledger.app.ui.components.LedgerIcons
+import com.ledger.app.ui.theme.AppFont
 import com.ledger.app.ui.theme.ledger
 
 @Composable
@@ -54,85 +58,81 @@ fun PinScreen(
             }
             val prompt = BiometricPrompt(activity, executor, callback)
             val info = BiometricPrompt.PromptInfo.Builder()
-                .setTitle("Войти в Ledger")
-                .setSubtitle("Подтвердите личность")
-                .setNegativeButtonText("Использовать PIN")
+                .setTitle("Unlock Leager")
+                .setSubtitle("Confirm it's you")
+                .setNegativeButtonText("Use PIN")
                 .build()
             prompt.authenticate(info)
         }
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().background(c.bg),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(c.bg),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(
-            "LEDGER",
-            fontFamily = IbmPlexMonoFamily,
-            fontSize = 11.sp,
-            letterSpacing = 3.sp,
-            color = c.lime
-        )
-        Spacer(Modifier.height(8.dp))
+        IconBubble(LedgerIcons.Lock, c.onAccent, size = 64.dp, corner = 22.dp, background = c.accent)
+        Spacer(Modifier.height(20.dp))
         Text(
             when (state.mode) {
-                PinMode.VERIFY -> "Введите PIN"
-                PinMode.SET -> "Создайте PIN"
-                PinMode.CONFIRM -> "Подтвердите PIN"
+                PinMode.VERIFY  -> "Enter your PIN"
+                PinMode.SET     -> "Create a PIN"
+                PinMode.CONFIRM -> "Confirm your PIN"
             },
-            fontFamily = IbmPlexSansFamily,
-            fontWeight = FontWeight.Medium,
-            fontSize = 20.sp,
+            style = MaterialTheme.typography.titleLarge,
             color = c.text
         )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            if (state.error.isNotEmpty()) state.error else "4 digits",
+            fontFamily = AppFont,
+            fontWeight = FontWeight.Medium,
+            fontSize = 13.sp,
+            color = if (state.error.isNotEmpty()) c.danger else c.muted
+        )
 
-        if (state.error.isNotEmpty()) {
-            Spacer(Modifier.height(8.dp))
-            Text(state.error, fontFamily = IbmPlexMonoFamily, fontSize = 11.sp, color = c.red)
-        }
+        Spacer(Modifier.height(28.dp))
 
-        Spacer(Modifier.height(32.dp))
-
-        // Dot indicators
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             repeat(4) { idx ->
                 val filled = idx < state.digits.length
                 Box(
                     modifier = Modifier
                         .size(14.dp)
-                        .background(if (filled) c.lime else Color.Transparent)
-                        .border(1.dp, if (filled) c.lime else c.border)
+                        .clip(CircleShape)
+                        .background(if (filled) c.text else Color.Transparent)
+                        .border(1.5.dp, if (filled) c.text else c.borderStrong, CircleShape)
                 )
             }
         }
 
-        Spacer(Modifier.height(48.dp))
+        Spacer(Modifier.height(44.dp))
 
-        // Keypad
-        val keys = listOf("1","2","3","4","5","6","7","8","9","","0","⌫")
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        val keys = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "⌫")
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             keys.chunked(3).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                     row.forEach { key ->
                         if (key.isEmpty()) {
-                            Spacer(Modifier.size(80.dp, 56.dp))
+                            Spacer(Modifier.size(72.dp))
                         } else {
+                            val isBackspace = key == "⌫"
                             Box(
                                 modifier = Modifier
-                                    .size(80.dp, 56.dp)
-                                    .border(1.dp, c.border)
-                                    .clickable {
-                                        if (key == "⌫") vm.onBackspace() else vm.onDigit(key)
-                                    },
+                                    .size(72.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isBackspace) Color.Transparent else c.surface)
+                                    .border(1.dp, if (isBackspace) Color.Transparent else c.border, CircleShape)
+                                    .clickable { if (isBackspace) vm.onBackspace() else vm.onDigit(key) },
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    key,
-                                    fontFamily = IbmPlexMonoFamily,
-                                    fontSize = if (key == "⌫") 18.sp else 20.sp,
-                                    color = if (key == "⌫") c.muted else c.text
-                                )
+                                if (isBackspace) {
+                                    Icon(LedgerIcons.Backspace, contentDescription = "Delete", tint = c.muted, modifier = Modifier.size(24.dp))
+                                } else {
+                                    Text(key, fontFamily = AppFont, fontWeight = FontWeight.SemiBold, fontSize = 24.sp, color = c.text)
+                                }
                             }
                         }
                     }

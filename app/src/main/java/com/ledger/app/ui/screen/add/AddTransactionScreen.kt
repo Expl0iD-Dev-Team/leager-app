@@ -5,20 +5,21 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.*
-import java.time.LocalDate
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -30,14 +31,16 @@ import com.ledger.app.domain.model.Category
 import com.ledger.app.domain.model.CategoryType
 import com.ledger.app.domain.model.RecurringInterval
 import com.ledger.app.domain.model.TransactionType
-import com.ledger.app.ui.components.BigAmountDisplay
-import com.ledger.app.util.formatMoney
-import com.ledger.app.ui.components.parseHexColor
-import com.ledger.app.ui.theme.IbmPlexMonoFamily
-import com.ledger.app.ui.theme.IbmPlexSansFamily
+import com.ledger.app.ui.components.*
+import com.ledger.app.ui.theme.AppFont
 import com.ledger.app.ui.theme.ledger
+import com.ledger.app.util.formatMoney
+import com.ledger.app.util.formatShort
+import com.ledger.app.util.isToday
+import com.ledger.app.util.isYesterday
+import java.time.LocalDate
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AddTransactionScreen(
     app: LedgerApplication,
@@ -49,6 +52,8 @@ fun AddTransactionScreen(
     val vm: AddTransactionViewModel = viewModel()
     val state by vm.state.collectAsStateWithLifecycle()
     val c = MaterialTheme.ledger
+    val isEditing = transactionId != null
+    val isTransfer = state.type == TransactionType.TRANSFER
 
     var showDatePicker by remember { mutableStateOf(false) }
 
@@ -63,11 +68,11 @@ fun AddTransactionScreen(
                         vm.setDate(LocalDate.ofEpochDay(millis / 86_400_000L))
                     }
                     showDatePicker = false
-                }) { Text("OK", fontFamily = IbmPlexMonoFamily, color = c.lime) }
+                }) { Text("OK", fontFamily = AppFont, fontWeight = FontWeight.Bold, color = c.text) }
             },
             dismissButton = {
                 TextButton(onClick = { showDatePicker = false }) {
-                    Text("Отмена", fontFamily = IbmPlexMonoFamily, color = c.muted)
+                    Text("Cancel", fontFamily = AppFont, fontWeight = FontWeight.SemiBold, color = c.muted)
                 }
             }
         ) {
@@ -93,232 +98,117 @@ fun AddTransactionScreen(
             .fillMaxSize()
             .background(c.bg)
     ) {
-        // Top bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 16.dp)
-                .border(width = 0.dp, color = Color.Transparent),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "×",
-                fontFamily = IbmPlexMonoFamily,
-                fontSize = 18.sp,
-                color = c.muted,
-                modifier = Modifier.clickable(onClick = onCancel)
-            )
-            Text(
-                "NEW OPERATION",
-                fontFamily = IbmPlexMonoFamily,
-                fontWeight = FontWeight.Medium,
-                fontSize = 12.sp,
-                letterSpacing = 1.4.sp,
-                color = c.text
-            )
-            Text(
-                if (state.isSaving) "…" else "SAVE",
-                fontFamily = IbmPlexMonoFamily,
-                fontSize = 11.sp,
-                letterSpacing = 1.2.sp,
-                color = c.lime,
-                modifier = Modifier.clickable { if (!state.isSaving) vm.save() }
-            )
-        }
+        TopBar(
+            title = if (isEditing) "Edit operation" else "New operation",
+            onBack = onCancel,
+            backIcon = LedgerIcons.Close
+        )
 
-        // Type segmented
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .border(1.dp, c.border)
-        ) {
-            TransactionType.entries.forEach { type ->
-                val isSelected = state.type == type
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .background(if (isSelected) c.text else Color.Transparent)
-                        .clickable { vm.setType(type) }
-                        .padding(vertical = 12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        type.label.uppercase(),
-                        fontFamily = IbmPlexMonoFamily,
-                        fontSize = 11.sp,
-                        letterSpacing = 1.3.sp,
-                        color = if (isSelected) c.bg else c.muted
-                    )
-                }
-            }
-        }
-
-        // Scrollable form
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .weight(1f)
                 .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(top = 8.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(22.dp)
         ) {
-            // Amount
-            BigAmountDisplay(
+            SegmentedControl(
+                options = TransactionType.entries.toList(),
+                selected = state.type,
+                onSelect = vm::setType,
+                label = { it.label }
+            )
+
+            AmountInput(
                 amountText = state.amountText,
                 onAmountChange = vm::setAmount,
-                isExpense = state.type == TransactionType.EXPENSE || state.type == TransactionType.TRANSFER,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 28.dp)
+                modifier = Modifier.padding(vertical = 6.dp)
             )
 
-            // Account picker
-            FieldLabel(
-                if (state.type == TransactionType.TRANSFER) "FROM ACCOUNT" else "ACCOUNT",
-                modifier = Modifier.padding(horizontal = 20.dp)
-            )
-            AccountPicker(
-                accounts = state.accounts,
-                selectedId = state.selectedAccount?.id,
-                onSelect = vm::setAccount,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-                    .padding(top = 8.dp, bottom = 18.dp)
-            )
-
-            if (state.type == TransactionType.TRANSFER) {
-                FieldLabel("TO ACCOUNT", modifier = Modifier.padding(horizontal = 20.dp))
+            // Accounts
+            if (isTransfer) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    AccountPicker(
+                        label = "From",
+                        accounts = state.accounts,
+                        selectedId = state.selectedAccount?.id,
+                        onSelect = vm::setAccount
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(c.surface2)
+                            .border(1.dp, c.border, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(LedgerIcons.Transfer, contentDescription = null, tint = c.text, modifier = Modifier.size(18.dp))
+                    }
+                    AccountPicker(
+                        label = "To",
+                        accounts = state.accounts.filter { it.id != state.selectedAccount?.id },
+                        selectedId = state.toAccount?.id,
+                        onSelect = vm::setToAccount
+                    )
+                }
+            } else {
                 AccountPicker(
-                    accounts = state.accounts.filter { it.id != state.selectedAccount?.id },
-                    selectedId = state.toAccount?.id,
-                    onSelect = vm::setToAccount,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp)
-                        .padding(top = 8.dp, bottom = 18.dp)
+                    label = "Account",
+                    accounts = state.accounts,
+                    selectedId = state.selectedAccount?.id,
+                    onSelect = vm::setAccount
                 )
             }
 
-            // Category grid
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 20.dp, end = 20.dp, bottom = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                FieldLabel("CATEGORY")
-            }
-
-            if (state.type == TransactionType.TRANSFER) {
-                // Transfers always use the "Перевод" category — no choice here
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    val transferCat = state.selectedCategory
-                    if (transferCat != null) {
-                        CategoryCell(
-                            category = transferCat,
-                            isSelected = true,
-                            onClick = {},
-                            modifier = Modifier.weight(1f)
-                        )
-                    } else {
-                        Text(
-                            "ПЕРЕВОД",
-                            fontFamily = IbmPlexMonoFamily,
-                            fontSize = 11.sp,
-                            letterSpacing = 1.2.sp,
-                            color = c.text,
-                            modifier = Modifier.weight(1f).border(1.dp, c.text).padding(12.dp)
-                        )
-                    }
-                    repeat(3) { Spacer(Modifier.weight(1f)) }
-                }
-            } else {
-                val displayCats = state.categories.filter {
-                    it.type == if (state.type == TransactionType.INCOME) CategoryType.INCOME else CategoryType.EXPENSE
-                }.filterNot { AddTransactionViewModel.isTransferCategory(it) }
-                val rows = (displayCats.size + 3) / 4
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    repeat(rows) { row ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            repeat(4) { col ->
-                                val idx = row * 4 + col
-                                if (idx < displayCats.size) {
-                                    val cat = displayCats[idx]
-                                    CategoryCell(
-                                        category = cat,
-                                        isSelected = cat.id == state.selectedCategory?.id,
-                                        onClick = { vm.setCategory(cat) },
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                } else {
-                                    Spacer(Modifier.weight(1f))
-                                }
-                            }
+            // Category
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                SectionTitle("Category")
+                if (isTransfer) {
+                    TransferCategoryCard(state.selectedCategory)
+                } else {
+                    val displayCats = state.categories.filter {
+                        it.type == if (state.type == TransactionType.INCOME) CategoryType.INCOME else CategoryType.EXPENSE
+                    }.filterNot { AddTransactionViewModel.isTransferCategory(it) }
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        displayCats.forEach { cat ->
+                            CategoryChip(
+                                category = cat,
+                                selected = cat.id == state.selectedCategory?.id,
+                                onClick = { vm.setCategory(cat) }
+                            )
                         }
                     }
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
-
-            // Note field
-            FieldLabel("NOTE", modifier = Modifier.padding(horizontal = 20.dp))
-            androidx.compose.foundation.text.BasicTextField(
+            LedgerTextField(
                 value = state.note,
                 onValueChange = vm::setNote,
-                textStyle = androidx.compose.ui.text.TextStyle(
-                    fontFamily = IbmPlexMonoFamily,
-                    fontSize = 15.sp,
-                    color = c.text
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-                    .padding(top = 8.dp)
-                    .border(width = 0.dp, color = Color.Transparent)
-                    .drawBorderBottom(c.borderStrong)
-                    .padding(vertical = 12.dp)
+                placeholder = "Add a note",
+                leadingIcon = LedgerIcons.Pencil,
+                containerColor = c.surface
             )
 
-            Spacer(Modifier.height(22.dp))
-
-            // Date and repeat row
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .border(1.dp, c.border)
-                        .clickable { showDatePicker = true }
-                        .padding(10.dp, 10.dp)
-                ) {
-                    FieldLabel("ДАТА")
-                    Text(
-                        text = "${state.date.dayOfMonth}.${state.date.monthValue.toString().padStart(2, '0')}.${state.date.year % 100}",
-                        fontFamily = IbmPlexMonoFamily,
-                        fontSize = 13.sp,
-                        color = c.lime,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .border(1.dp, c.border)
-                        .padding(10.dp, 10.dp)
-                        .clickable {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                FieldCard(
+                    label = "Date",
+                    value = dateLabel(state.date),
+                    icon = LedgerIcons.Calendar,
+                    onClick = { showDatePicker = true },
+                    modifier = Modifier.weight(1f)
+                )
+                if (!isEditing) {
+                    FieldCard(
+                        label = "Repeat",
+                        value = state.recurringInterval?.label ?: "Never",
+                        icon = LedgerIcons.Repeat,
+                        onClick = {
                             val current = state.recurringInterval
                             val next = if (current == null) RecurringInterval.MONTHLY
                             else RecurringInterval.entries.let {
@@ -326,157 +216,166 @@ fun AddTransactionScreen(
                                 if (idx < it.lastIndex) it[idx + 1] else null
                             }
                             vm.setRecurring(next)
-                        }
-                ) {
-                    FieldLabel("REPEAT")
-                    Text(
-                        text = state.recurringInterval?.label?.uppercase() ?: "OFF",
-                        fontFamily = IbmPlexMonoFamily,
-                        fontSize = 13.sp,
-                        color = if (state.recurringInterval != null) c.lime else c.muted,
-                        modifier = Modifier.padding(top = 4.dp)
+                        },
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }
 
-            // Error
             state.error?.let {
-                Text(
-                    it,
-                    fontFamily = IbmPlexMonoFamily,
-                    fontSize = 11.sp,
-                    color = c.red,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
-                )
+                Text(it, fontFamily = AppFont, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = c.danger)
             }
-
-            Spacer(Modifier.height(40.dp))
         }
+
+        // Save
+        val amount = state.amountText.toDoubleOrNull()
+        val saveLabel = when {
+            state.isSaving -> "Saving…"
+            isEditing -> "Save changes"
+            state.type == TransactionType.EXPENSE -> "Save expense"
+            state.type == TransactionType.INCOME -> "Save income"
+            amount != null && amount > 0 -> "Transfer ${amount.formatMoney()}"
+            else -> "Transfer"
+        }
+        PrimaryButton(
+            text = saveLabel,
+            onClick = vm::save,
+            enabled = !state.isSaving,
+            modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 16.dp)
+        )
+    }
+}
+
+private fun dateLabel(date: LocalDate): String = when {
+    date.isToday()     -> "Today, ${date.formatShort()}"
+    date.isYesterday() -> "Yesterday, ${date.formatShort()}"
+    else               -> date.formatShort() + if (date.year != LocalDate.now().year) " ${date.year}" else ""
+}
+
+@Composable
+private fun CategoryChip(category: Category, selected: Boolean, onClick: () -> Unit) {
+    val c = MaterialTheme.ledger
+    val color = parseHexColor(category.color)
+    val shape = RoundedCornerShape(14.dp)
+    Row(
+        modifier = Modifier
+            .clip(shape)
+            .background(if (selected) c.accent else c.surface)
+            .then(if (selected) Modifier else Modifier.border(1.dp, c.border, shape))
+            .clickable(onClick = onClick)
+            .padding(start = 12.dp, end = 14.dp, top = 10.dp, bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            categoryIcon(category),
+            contentDescription = null,
+            tint = if (selected) c.onAccent else color,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            category.name,
+            fontFamily = AppFont,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 14.sp,
+            color = if (selected) c.onAccent else c.text
+        )
+    }
+}
+
+/** Transfers always use the "Transfer" category — shown locked, not selectable. */
+@Composable
+private fun TransferCategoryCard(category: Category?) {
+    val c = MaterialTheme.ledger
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .ledgerCard(20.dp)
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (category != null) CategoryBubble(category, size = 40.dp)
+        else IconBubble(LedgerIcons.Transfer, c.muted, size = 40.dp)
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(category?.name ?: "Transfer", fontFamily = AppFont, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = c.text)
+            Text("Set automatically for transfers", fontFamily = AppFont, fontWeight = FontWeight.Medium, fontSize = 12.sp, color = c.muted)
+        }
+        Icon(LedgerIcons.Lock, contentDescription = null, tint = c.faint, modifier = Modifier.size(18.dp))
     }
 }
 
 @Composable
-private fun FieldLabel(text: String, modifier: Modifier = Modifier) {
-    val c = MaterialTheme.ledger
-    Text(
-        text = text,
-        fontFamily = IbmPlexMonoFamily,
-        fontSize = 9.sp,
-        letterSpacing = 1.2.sp,
-        color = c.faint,
-        modifier = modifier
-    )
-}
-
-@Composable
 private fun AccountPicker(
+    label: String,
     accounts: List<Account>,
     selectedId: String?,
-    onSelect: (Account) -> Unit,
-    modifier: Modifier = Modifier
+    onSelect: (Account) -> Unit
 ) {
     val c = MaterialTheme.ledger
     var expanded by remember { mutableStateOf(false) }
     val selected = accounts.find { it.id == selectedId }
 
-    Column(modifier = modifier) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .ledgerCard(20.dp)
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(c.surface)
-                .border(1.dp, if (expanded) c.borderStrong else c.border)
                 .clickable { expanded = !expanded }
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(modifier = Modifier.width(8.dp).height(24.dp).background(parseHexColor(selected?.color ?: "#888888")))
+            if (selected != null) {
+                IconBubble(accountIcon(selected.type), parseHexColor(selected.color), size = 40.dp)
+            } else {
+                IconBubble(LedgerIcons.Wallet, c.muted, size = 40.dp)
+            }
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(selected?.name ?: "Выберите счёт", fontFamily = IbmPlexMonoFamily, fontSize = 14.sp, color = c.text)
-                if (selected != null) {
-                    Text(
-                        "BAL ${selected.balance.formatMoney()}",
-                        fontFamily = IbmPlexMonoFamily,
-                        fontSize = 11.sp,
-                        color = c.muted
-                    )
-                }
+                Text(label, fontFamily = AppFont, fontWeight = FontWeight.Medium, fontSize = 12.sp, color = c.muted)
+                Text(
+                    selected?.name ?: "Choose account",
+                    fontFamily = AppFont,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 15.sp,
+                    color = if (selected != null) c.text else c.faint
+                )
             }
-            Text(if (expanded) "▲" else "▼", fontFamily = IbmPlexMonoFamily, fontSize = 10.sp, color = c.muted)
+            if (selected != null) {
+                Text(
+                    selected.balance.formatMoney(selected.currency),
+                    fontFamily = AppFont,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 13.sp,
+                    color = c.muted
+                )
+                Spacer(Modifier.width(8.dp))
+            }
+            Icon(
+                LedgerIcons.ChevronDown,
+                contentDescription = null,
+                tint = c.faint,
+                modifier = Modifier.size(18.dp)
+            )
         }
         if (expanded) {
             accounts.filter { it.id != selected?.id }.forEach { acc ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(c.surface2)
-                        .border(1.dp, c.border)
                         .clickable { onSelect(acc); expanded = false }
-                        .padding(14.dp),
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(modifier = Modifier.width(8.dp).height(20.dp).background(parseHexColor(acc.color)))
+                    IconBubble(accountIcon(acc.type), parseHexColor(acc.color), size = 32.dp, corner = 10.dp)
                     Spacer(Modifier.width(12.dp))
-                    Text(acc.name, fontFamily = IbmPlexMonoFamily, fontSize = 13.sp, color = c.text, modifier = Modifier.weight(1f))
-                    Text(acc.balance.formatMoney(), fontFamily = IbmPlexMonoFamily, fontSize = 11.sp, color = c.muted)
+                    Text(acc.name, fontFamily = AppFont, fontWeight = FontWeight.Medium, fontSize = 14.sp, color = c.text, modifier = Modifier.weight(1f))
+                    Text(acc.balance.formatMoney(acc.currency), fontFamily = AppFont, fontSize = 13.sp, color = c.muted)
                 }
             }
         }
     }
 }
-
-@Composable
-private fun CategoryCell(
-    category: Category,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val c = MaterialTheme.ledger
-    Box(
-        modifier = modifier
-            .border(1.dp, if (isSelected) c.text else c.border)
-            .background(if (isSelected) c.surface else Color.Transparent)
-            .clickable(onClick = onClick)
-            .padding(6.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(
-                modifier = Modifier
-                    .size(20.dp)
-                    .background(parseHexColor(category.color))
-            )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = category.name.take(8).uppercase(),
-                fontFamily = IbmPlexMonoFamily,
-                fontSize = 8.sp,
-                letterSpacing = 0.4.sp,
-                color = if (isSelected) c.text else c.muted,
-                maxLines = 2,
-                lineHeight = 10.sp
-            )
-        }
-        if (isSelected) {
-            Text(
-                "✓",
-                fontFamily = IbmPlexMonoFamily,
-                fontSize = 9.sp,
-                color = c.lime,
-                modifier = Modifier.align(Alignment.TopEnd)
-            )
-        }
-    }
-}
-
-private fun Modifier.drawBorderBottom(color: androidx.compose.ui.graphics.Color): Modifier =
-    this.drawBehind {
-        drawLine(
-            color = color,
-            start = androidx.compose.ui.geometry.Offset(0f, size.height),
-            end = androidx.compose.ui.geometry.Offset(size.width, size.height),
-            strokeWidth = 1.dp.toPx()
-        )
-    }
-

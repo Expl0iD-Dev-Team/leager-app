@@ -11,6 +11,6 @@ data class Category(
 )
 
 enum class CategoryType(val label: String) {
-    EXPENSE("Расход"),
-    INCOME("Доход")
+    EXPENSE("Expense"),
+    INCOME("Income")
 }

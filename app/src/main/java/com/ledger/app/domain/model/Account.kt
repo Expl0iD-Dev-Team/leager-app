@@ -14,8 +14,8 @@ data class Account(
 )
 
 enum class AccountType(val label: String) {
-    CARD("Карта"),
-    CASH("Наличные"),
-    DEPOSIT("Депозит"),
-    SAVINGS("Накопления")
+    CARD("Card"),
+    CASH("Cash"),
+    DEPOSIT("Deposit"),
+    SAVINGS("Savings")
 }

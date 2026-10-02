@@ -19,7 +19,7 @@ data class Transaction(
 )
 
 enum class TransactionType(val label: String) {
-    EXPENSE("Расход"),
-    INCOME("Доход"),
-    TRANSFER("Перевод")
+    EXPENSE("Expense"),
+    INCOME("Income"),
+    TRANSFER("Transfer")
 }

@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.ledger.app.LedgerApplication
 import com.ledger.app.data.CsvImporter
+import com.ledger.app.data.prefs.ThemeMode
 import com.ledger.app.domain.model.Transaction
 import com.ledger.app.domain.model.TransactionType
 import kotlinx.coroutines.Dispatchers
@@ -35,7 +36,10 @@ sealed class ExportStatus {
 data class SettingsState(
     val pinEnabled: Boolean = false,
     val biometricEnabled: Boolean = false,
-    val darkTheme: Boolean = true,
+    val themeMode: ThemeMode = ThemeMode.DARK,
+    val accentColor: String = "LIME",
+    val accountsCount: Int = 0,
+    val categoriesCount: Int = 0,
     val usdRate: Double = 92.0,
     val eurRate: Double = 99.0,
     val netWorthCurrency: String = "RUB",
@@ -53,14 +57,16 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     init {
         viewModelScope.launch {
             combine(
-                combine(security.isPinEnabled, security.isBiometricEnabled, app.prefsManager.isDarkTheme) { pin, bio, dark -> Triple(pin, bio, dark) },
-                app.prefsManager.usdRate,
-                app.prefsManager.eurRate,
-                app.prefsManager.netWorthCurrency
-            ) { sec, usdRate, eurRate, netWorthCurrency ->
+                combine(security.isPinEnabled, security.isBiometricEnabled) { pin, bio -> pin to bio },
+                combine(app.prefsManager.themeMode, app.prefsManager.accentColor) { mode, accent -> mode to accent },
+                combine(app.prefsManager.usdRate, app.prefsManager.eurRate, app.prefsManager.netWorthCurrency) { usd, eur, cur -> Triple(usd, eur, cur) },
+                combine(app.accountRepo.getActiveAccounts(), app.categoryRepo.getAll()) { accs, cats -> accs.size to cats.size }
+            ) { sec, look, money, counts ->
                 _state.value.copy(
-                    pinEnabled = sec.first, biometricEnabled = sec.second, darkTheme = sec.third,
-                    usdRate = usdRate, eurRate = eurRate, netWorthCurrency = netWorthCurrency,
+                    pinEnabled = sec.first, biometricEnabled = sec.second,
+                    themeMode = look.first, accentColor = look.second,
+                    usdRate = money.first, eurRate = money.second, netWorthCurrency = money.third,
+                    accountsCount = counts.first, categoriesCount = counts.second,
                     navigateToPinSetup = false
                 )
             }.collect { _state.value = it }
@@ -87,10 +93,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun toggleTheme() {
-        viewModelScope.launch {
-            app.prefsManager.setDarkTheme(!_state.value.darkTheme)
-        }
+    fun setThemeMode(mode: ThemeMode) {
+        viewModelScope.launch { app.prefsManager.setThemeMode(mode) }
+    }
+
+    fun setAccentColor(name: String) {
+        viewModelScope.launch { app.prefsManager.setAccentColor(name) }
     }
 
     fun setUsdRate(rate: Double) {
@@ -113,7 +121,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             try {
                 val result = withContext(Dispatchers.IO) {
                     val stream = app.contentResolver.openInputStream(uri)
-                        ?: throw Exception("Не удалось открыть файл")
+                        ?: throw Exception("Could not open the file")
                     stream.use { s ->
                         CsvImporter(app.accountRepo, app.categoryRepo, app.transactionRepo).import(s)
                     }
@@ -123,7 +131,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 )
             } catch (e: Throwable) {
                 _state.value = _state.value.copy(
-                    importStatus = ImportStatus.Error(e.message ?: "Неизвестная ошибка")
+                    importStatus = ImportStatus.Error(e.message ?: "Unknown error")
                 )
             }
         }
@@ -148,7 +156,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 _state.value = _state.value.copy(exportStatus = ExportStatus.Ready(csv))
             } catch (e: Throwable) {
                 _state.value = _state.value.copy(
-                    exportStatus = ExportStatus.Error(e.message ?: "Ошибка при формировании файла")
+                    exportStatus = ExportStatus.Error(e.message ?: "Could not build the file")
                 )
             }
         }

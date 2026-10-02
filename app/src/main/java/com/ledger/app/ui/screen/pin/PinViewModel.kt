@@ -63,7 +63,7 @@ class PinViewModel(application: Application) : AndroidViewModel(application) {
                     if (ok) {
                         _state.value = _state.value.copy(success = true)
                     } else {
-                        _state.value = _state.value.copy(digits = "", error = "Неверный PIN")
+                        _state.value = _state.value.copy(digits = "", error = "Wrong PIN")
                     }
                 }
                 PinMode.SET -> {
@@ -74,7 +74,7 @@ class PinViewModel(application: Application) : AndroidViewModel(application) {
                         security.setPin(pin)
                         _state.value = _state.value.copy(success = true)
                     } else {
-                        _state.value = _state.value.copy(mode = PinMode.SET, digits = "", pendingPin = "", error = "PIN не совпадает")
+                        _state.value = _state.value.copy(mode = PinMode.SET, digits = "", pendingPin = "", error = "PINs don't match")
                     }
                 }
             }

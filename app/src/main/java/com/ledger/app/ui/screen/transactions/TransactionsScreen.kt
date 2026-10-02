@@ -1,192 +1,137 @@
 package com.ledger.app.ui.screen.transactions
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.ledger.app.LedgerApplication
-import com.ledger.app.domain.model.Transaction
-import com.ledger.app.ui.components.SectionHeader
-import com.ledger.app.ui.components.TransactionRow
-import com.ledger.app.ui.theme.IbmPlexMonoFamily
+import com.ledger.app.domain.model.TransactionType
+import com.ledger.app.ui.components.*
+import com.ledger.app.ui.theme.AppFont
 import com.ledger.app.ui.theme.ledger
-import com.ledger.app.util.formatShort
-import com.ledger.app.util.isToday
-import com.ledger.app.util.isYesterday
+import com.ledger.app.util.formatMoney
+import com.ledger.app.util.formatRelative
+import com.ledger.app.util.formatSigned
+import com.ledger.app.util.monthLong
+import java.time.LocalDate
 
 @Composable
 fun TransactionsScreen(
-    app: LedgerApplication,
-    onTransactionClick: (String) -> Unit,
-    onAddClick: () -> Unit,
-    onBackClick: () -> Unit
+    onTransactionClick: (String) -> Unit
 ) {
     val vm: TransactionsViewModel = viewModel()
     val state by vm.state.collectAsStateWithLifecycle()
     val c = MaterialTheme.ledger
+    val month = monthLong(LocalDate.now().monthValue)
 
-    Column(
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(c.bg)
+            .background(c.bg),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 10.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // Top bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "← BACK",
-                fontFamily = IbmPlexMonoFamily,
-                fontSize = 12.sp,
-                letterSpacing = 0.6.sp,
-                color = c.muted,
-                modifier = Modifier
-                    .clickable(onClick = onBackClick)
-            )
-            Spacer(Modifier.weight(1f))
-            Text(
-                text = "OPERATIONS",
-                fontFamily = IbmPlexMonoFamily,
-                fontWeight = FontWeight.Medium,
-                fontSize = 12.sp,
-                letterSpacing = 1.6.sp,
-                color = c.text
-            )
-            Spacer(Modifier.weight(1f))
-            Text(
-                text = "+ NEW",
-                fontFamily = IbmPlexMonoFamily,
-                fontSize = 11.sp,
-                letterSpacing = 1.2.sp,
-                color = c.lime,
-                modifier = Modifier.clickable(onClick = onAddClick)
-            )
-        }
+        item { ScreenTitle("Activity") }
 
-        // Search bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 4.dp)
-                .background(c.surface)
-                .border(1.dp, c.border)
-                .padding(horizontal = 12.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("⌕", fontFamily = IbmPlexMonoFamily, fontSize = 14.sp, color = c.muted)
-            Spacer(Modifier.width(8.dp))
-            BasicTextField(
+        item {
+            LedgerTextField(
                 value = state.searchQuery,
                 onValueChange = vm::onSearch,
-                textStyle = TextStyle(
-                    fontFamily = IbmPlexMonoFamily,
-                    fontSize = 13.sp,
-                    color = c.text
-                ),
-                decorationBox = { inner ->
-                    if (state.searchQuery.isEmpty()) {
-                        Text(
-                            "искать операцию…",
-                            fontFamily = IbmPlexMonoFamily,
-                            fontSize = 13.sp,
-                            color = c.muted
-                        )
-                    }
-                    inner()
-                },
-                modifier = Modifier.fillMaxWidth()
+                placeholder = "Search by note, category or amount",
+                leadingIcon = LedgerIcons.Search,
+                containerColor = c.surface
             )
         }
 
-        Spacer(Modifier.height(8.dp))
+        item {
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                TypeFilter.entries.forEach { f ->
+                    ChoiceChip(f.label, selected = state.typeFilter == f, onClick = { vm.onTypeFilter(f) })
+                }
+            }
+        }
 
-        // Transaction list grouped by date
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                MonthTotal("$month in", "+${state.monthIncome.formatMoney()}", c.income, LedgerIcons.ArrowIn, Modifier.weight(1f))
+                MonthTotal("$month out", "−${state.monthExpense.formatMoney()}", c.text, LedgerIcons.ArrowOut, Modifier.weight(1f))
+            }
+        }
+
         val grouped = state.filteredTransactions.groupBy { it.date }
-        LazyColumn {
-            grouped.entries.sortedByDescending { it.key }.forEach { (date, txns) ->
-                item(key = date.toString()) {
-                    val label = when {
-                        date.isToday()     -> "TODAY · ${date.formatShort().uppercase()}"
-                        date.isYesterday() -> "YESTERDAY · ${date.formatShort().uppercase()}"
-                        else               -> date.formatShort().uppercase()
+        grouped.entries.sortedByDescending { it.key }.forEach { (date, txns) ->
+            item(key = date.toString()) {
+                val net = txns.sumOf { tx ->
+                    when (tx.type) {
+                        TransactionType.INCOME   -> tx.amount
+                        TransactionType.EXPENSE  -> -kotlin.math.abs(tx.amount)
+                        TransactionType.TRANSFER -> 0.0
                     }
-                    Text(
-                        text = label,
-                        fontFamily = IbmPlexMonoFamily,
-                        fontSize = 10.sp,
-                        letterSpacing = 1.2.sp,
-                        color = c.faint,
-                        modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 4.dp)
-                    )
                 }
-                itemsIndexed(txns, key = { _, tx -> tx.id }) { idx, tx ->
-                    TransactionRow(
-                        transaction = tx,
-                        category = state.categories[tx.categoryId],
-                        accountName = state.accountNames[tx.accountId] ?: "",
-                        onClick = { onTransactionClick(tx.id) },
-                        showDivider = idx < txns.lastIndex
-                    )
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(date.formatRelative(), fontFamily = AppFont, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = c.muted)
+                        if (net != 0.0) {
+                            Text(net.formatSigned(), fontFamily = AppFont, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = c.muted)
+                        }
+                    }
+                    LedgerCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)
+                    ) {
+                        txns.forEach { tx ->
+                            TransactionRow(
+                                transaction = tx,
+                                category = state.categories[tx.categoryId],
+                                accountName = state.accountNames[tx.accountId] ?: "",
+                                toAccountName = tx.toAccountId?.let { state.accountNames[it] },
+                                onClick = { onTransactionClick(tx.id) }
+                            )
+                        }
+                    }
                 }
             }
+        }
 
-            if (state.filteredTransactions.isEmpty() && !state.isLoading) {
-                item {
-                    EmptyState()
-                }
+        if (state.filteredTransactions.isEmpty() && !state.isLoading) {
+            item {
+                val filtering = state.searchQuery.isNotBlank() || state.typeFilter != TypeFilter.ALL
+                EmptyState(
+                    icon = if (filtering) LedgerIcons.Search else LedgerIcons.Inbox,
+                    title = if (filtering) "Nothing found" else "No operations yet",
+                    subtitle = if (filtering) "Try another search or filter." else "Tap + to add your first operation."
+                )
             }
-
-            item { Spacer(Modifier.height(80.dp)) }
         }
     }
 }
 
 @Composable
-private fun EmptyState() {
+private fun MonthTotal(label: String, value: String, valueColor: Color, icon: ImageVector, modifier: Modifier) {
     val c = MaterialTheme.ledger
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(40.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .border(1.dp, c.muted, androidx.compose.ui.graphics.RectangleShape)
-        )
-        Spacer(Modifier.height(12.dp))
-        Text(
-            "NO OPERATIONS",
-            fontFamily = IbmPlexMonoFamily,
-            fontSize = 10.sp,
-            letterSpacing = 1.2.sp,
-            color = c.muted
-        )
-        Spacer(Modifier.height(6.dp))
-        Text(
-            "Журнал пуст. Нажмите +.",
-            fontFamily = com.ledger.app.ui.theme.IbmPlexSansFamily,
-            fontSize = 13.sp,
-            color = c.faint
-        )
+    LedgerCard(modifier = modifier, radius = 20.dp, contentPadding = PaddingValues(16.dp), verticalSpacing = 10.dp) {
+        Icon(icon, contentDescription = null, tint = c.muted, modifier = Modifier.size(18.dp))
+        Column {
+            Text(label, fontFamily = AppFont, fontWeight = FontWeight.Medium, fontSize = 12.sp, color = c.muted)
+            Text(value, fontFamily = AppFont, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = valueColor, maxLines = 1)
+        }
     }
 }
-

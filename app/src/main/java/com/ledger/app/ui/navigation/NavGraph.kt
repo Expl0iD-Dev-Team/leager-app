@@ -66,23 +66,27 @@ fun LedgerNavHost(
 
         composable(Routes.HOME) {
             HomeScreen(
-                onAddClick = { navController.navigate(Routes.ADD_TRANSACTION_BASE) },
+                onAddClick = { type -> navController.navigate("${Routes.ADD_TRANSACTION_BASE}?type=${type.name}") },
                 onTransactionClick = { id ->
                     navController.navigate("transaction_detail/$id")
                 },
-                onSeeAllClick = { navController.navigate(Routes.TRANSACTIONS) },
-                onMenuClick = { navController.navigate(Routes.CATEGORIES) }
+                onSeeAllClick = {
+                    navController.navigate(Routes.TRANSACTIONS) {
+                        launchSingleTop = true
+                        popUpTo(Routes.HOME) { saveState = true }
+                        restoreState = true
+                    }
+                },
+                onAccountsClick = { navController.navigate(Routes.ACCOUNTS) },
+                onCategoriesClick = { navController.navigate(Routes.CATEGORIES) }
             )
         }
 
         composable(Routes.TRANSACTIONS) {
             TransactionsScreen(
-                app = app,
                 onTransactionClick = { id ->
                     navController.navigate("transaction_detail/$id")
-                },
-                onAddClick = { navController.navigate(Routes.ADD_TRANSACTION_BASE) },
-                onBackClick = { navController.popBackStack() }
+                }
             )
         }
 
@@ -148,17 +152,15 @@ fun LedgerNavHost(
         }
 
         composable(Routes.STATS) {
-            StatsScreen(
-                app = app,
-                onBackClick = { navController.popBackStack() }
-            )
+            StatsScreen()
         }
 
         composable(Routes.SETTINGS) {
             SettingsScreen(
                 app = app,
-                onBackClick = { navController.popBackStack() },
-                onSetPin = { navController.navigate(Routes.PIN_SETUP) }
+                onSetPin = { navController.navigate(Routes.PIN_SETUP) },
+                onAccountsClick = { navController.navigate(Routes.ACCOUNTS) },
+                onCategoriesClick = { navController.navigate(Routes.CATEGORIES) }
             )
         }
     }

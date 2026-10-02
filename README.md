@@ -10,16 +10,16 @@ A minimalist personal finance app for Android, built with Jetpack Compose. Track
 - **Accounts** — multiple accounts with balance tracking and sparkline history
 - **Categories** — custom categories with 64-color palette, budget limits, and deletion
 - **Statistics**
-  - Expense donut chart with per-category breakdown
-  - Income donut chart with per-category breakdown
-  - 12-month stacked bar trend (income + expense)
-  - 30-day activity heatmap
+  - Expense / income donut with daily average and change vs the previous period
+  - Full per-category lists with exact amounts, share and operation count
+  - 6-month income vs spending trend
+  - 30-day spending heatmap
   - Period navigation: Day / Week / Month / Year with ‹ › buttons and swipe gesture
 - **CSV Import** — bulk-import transactions from a CSV file (see format below)
 - **CSV Export** — export all transactions to a CSV file via the system file picker
 - **Recurring transactions** — daily / weekly / monthly / yearly templates via WorkManager
 - **Security** — 4-digit PIN with SHA-256 hashing, optional biometric (fingerprint / face) unlock
-- **Themes** — dark and light theme, toggleable at runtime
+- **Themes** — dark, light or follow the system; six accent colors (Lime, Violet, Blue, Coral, Mint, Amber)
 - **Offline-first** — all data stored locally in Room (SQLite); no network required
 
 ---
@@ -111,17 +111,18 @@ app/src/main/java/com/ledger/app/
 │   └── DefaultData.kt            # Seed accounts and categories on first launch
 │
 └── ui/
-    ├── theme/                    # LedgerColors, LedgerTheme, IBM Plex font families
+    ├── theme/                    # LedgerColors, LedgerTheme, AccentColor, Manrope typography
     ├── components/               # Shared composables
-    │   ├── AmountDisplay.kt      # BigAmountDisplay — large inline amount input
+    │   ├── Kit.kt                # Design-system pieces: cards, buttons, segmented control, fields, dialogs
+    │   ├── LedgerIcons.kt        # Line icons (generated from the Figma icon set)
+    │   ├── AmountDisplay.kt      # AmountInput — large centered amount input
     │   ├── TransactionRow.kt     # Single transaction list item
-    │   ├── BottomNav.kt          # LedgerBottomNav + NavTab sealed class
-    │   ├── AccountDialog.kt      # Account add/edit dialog + ColorPickerRow (64 colors)
+    │   ├── BottomNav.kt          # Floating LedgerBottomNav + NavTab sealed class
+    │   ├── AccountDialog.kt      # Account add/edit dialog + ColorPicker
     │   ├── DonutChart.kt         # Segmented donut (Canvas)
-    │   ├── BarChart.kt           # StackedBarChart — 12-month income/expense trend
-    │   ├── SparklineChart.kt     # Mini sparkline for account chips
-    │   ├── HeatmapGrid.kt        # 30-day activity heatmap grid
-    │   └── SectionHeader.kt
+    │   ├── BarChart.kt           # GroupedBarChart — income vs spending by month
+    │   ├── SparklineChart.kt     # Mini sparkline
+    │   └── HeatmapGrid.kt        # 30-day spending heatmap grid
     ├── navigation/
     │   └── NavGraph.kt           # LedgerNavHost + Routes constants
     └── screen/

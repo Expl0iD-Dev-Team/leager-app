@@ -4,108 +4,111 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ledger.app.ui.navigation.Routes
+import com.ledger.app.ui.theme.AppFont
 import com.ledger.app.ui.theme.ledger
 
 sealed class NavTab(val route: String, val label: String) {
-    object Home        : NavTab(Routes.HOME,        "HOME")
-    object Ops         : NavTab(Routes.TRANSACTIONS, "OPS")
-    object Add         : NavTab("add",               "+")
-    object Stats       : NavTab(Routes.STATS,        "STATS")
-    object More        : NavTab(Routes.SETTINGS,     "MORE")
+    object Home  : NavTab(Routes.HOME,         "Home")
+    object Ops   : NavTab(Routes.TRANSACTIONS, "Activity")
+    object Add   : NavTab("add",               "Add")
+    object Stats : NavTab(Routes.STATS,        "Stats")
+    object More  : NavTab(Routes.SETTINGS,     "More")
 }
 
 val NavTabs = listOf(NavTab.Home, NavTab.Ops, NavTab.Add, NavTab.Stats, NavTab.More)
 
+private fun NavTab.icon(): ImageVector = when (this) {
+    NavTab.Home  -> LedgerIcons.Home
+    NavTab.Ops   -> LedgerIcons.List
+    NavTab.Add   -> LedgerIcons.Plus
+    NavTab.Stats -> LedgerIcons.PieChart
+    NavTab.More  -> LedgerIcons.Grid
+}
+
+/** Floating pill navigation with a central "add" button. */
 @Composable
 fun LedgerBottomNav(
     currentRoute: String,
     onTabSelected: (NavTab) -> Unit
 ) {
     val c = MaterialTheme.ledger
-    val borderColor = c.border
+    val shape = RoundedCornerShape(28.dp)
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(c.bg)
             .navigationBarsPadding()
+            .padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 12.dp)
     ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(64.dp)
-            .drawBehind {
-                drawLine(
-                    color = borderColor,
-                    start = Offset(0f, 0f),
-                    end = Offset(size.width, 0f),
-                    strokeWidth = 1.dp.toPx()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(72.dp)
+                .shadow(
+                    elevation = if (c.isDark) 18.dp else 10.dp,
+                    shape = shape,
+                    ambientColor = Color.Black,
+                    spotColor = Color.Black
                 )
-            },
-        horizontalArrangement = Arrangement.SpaceAround,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        NavTabs.forEach { tab ->
-            if (tab is NavTab.Add) {
-                // Central + button
-                Box(
-                    modifier = Modifier
-                        .size(52.dp)
-                        .background(c.lime)
-                        .border(1.dp, c.text)
-                        .clickable { onTabSelected(tab) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "+",
-                        fontFamily = com.ledger.app.ui.theme.IbmPlexMonoFamily,
-                        fontSize = 26.sp,
-                        color = Color(0xFF0A0A0A),
-                        lineHeight = 26.sp
-                    )
-                }
-            } else {
-                val isActive = currentRoute == tab.route
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .clickable { onTabSelected(tab) },
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
+                .clip(shape)
+                .background(c.surface)
+                .border(1.dp, c.border, shape)
+                .padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            NavTabs.forEach { tab ->
+                if (tab is NavTab.Add) {
                     Box(
                         modifier = Modifier
-                            .size(18.dp)
-                            .border(
-                                width = 1.5.dp,
-                                color = if (isActive) c.lime else c.muted
-                            )
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = tab.label,
-                        fontFamily = com.ledger.app.ui.theme.IbmPlexMonoFamily,
-                        fontSize = 9.sp,
-                        letterSpacing = 1.2.sp,
-                        color = if (isActive) c.lime else c.muted,
-                        textAlign = TextAlign.Center
-                    )
+                            .size(56.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(c.accent)
+                            .clickable { onTabSelected(tab) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(tab.icon(), contentDescription = "Add operation", tint = c.onAccent, modifier = Modifier.size(26.dp))
+                    }
+                } else {
+                    val isActive = currentRoute == tab.route
+                    val tint = if (isActive) c.text else c.muted
+                    Column(
+                        modifier = Modifier
+                            .width(64.dp)
+                            .height(56.dp)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(if (isActive) c.accentSoft else Color.Transparent)
+                            .clickable { onTabSelected(tab) },
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(tab.icon(), contentDescription = tab.label, tint = tint, modifier = Modifier.size(22.dp))
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            tab.label,
+                            fontFamily = AppFont,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 11.sp,
+                            color = tint
+                        )
+                    }
                 }
             }
         }
-    }
     }
 }

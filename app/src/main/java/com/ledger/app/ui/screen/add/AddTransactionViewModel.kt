@@ -109,34 +109,34 @@ class AddTransactionViewModel(application: Application) : AndroidViewModel(appli
         val s = _state.value
         val amount = s.amountText.toDoubleOrNull()
         if (amount == null || amount <= 0) {
-            _state.value = s.copy(error = "Укажите корректную сумму")
+            _state.value = s.copy(error = "Enter a valid amount")
             return
         }
         val isTransfer = s.type == TransactionType.TRANSFER
         if (!isTransfer && s.selectedCategory == null) {
-            _state.value = s.copy(error = "Выберите категорию")
+            _state.value = s.copy(error = "Choose a category")
             return
         }
         val account = s.selectedAccount
         if (account == null) {
-            _state.value = s.copy(error = "Выберите счёт")
+            _state.value = s.copy(error = "Choose an account")
             return
         }
         // Destination account only matters for transfers
         val toAccount = if (isTransfer) s.toAccount else null
         if (isTransfer && toAccount == null) {
-            _state.value = s.copy(error = "Выберите счёт назначения")
+            _state.value = s.copy(error = "Choose the destination account")
             return
         }
         if (isTransfer && toAccount?.id == account.id) {
-            _state.value = s.copy(error = "Счета списания и зачисления совпадают")
+            _state.value = s.copy(error = "Source and destination accounts are the same")
             return
         }
 
         _state.value = s.copy(isSaving = true, error = null)
 
         viewModelScope.launch {
-            // Transfers always go to the "Перевод" category
+            // Transfers always go to the transfer category
             val category = if (isTransfer) ensureTransferCategory() else s.selectedCategory!!
 
             val signedAmount = when (s.type) {
@@ -224,7 +224,7 @@ class AddTransactionViewModel(application: Application) : AndroidViewModel(appli
         findTransferCategory(app.categoryRepo.getAll().first())?.let { return it }
         val created = Category(
             id = TRANSFER_CATEGORY_ID,
-            name = "Перевод",
+            name = "Transfer",
             iconCode = "other",
             color = "#A0A0A0",
             type = CategoryType.EXPENSE,
@@ -237,8 +237,10 @@ class AddTransactionViewModel(application: Application) : AndroidViewModel(appli
     companion object {
         private const val TRANSFER_CATEGORY_ID = "transfer"
 
+        private val TRANSFER_NAMES = setOf("перевод", "transfer")
+
         fun isTransferCategory(cat: Category): Boolean =
-            cat.id == TRANSFER_CATEGORY_ID || cat.name.trim().equals("Перевод", ignoreCase = true)
+            cat.id == TRANSFER_CATEGORY_ID || cat.name.trim().lowercase() in TRANSFER_NAMES
 
         fun findTransferCategory(cats: List<Category>): Category? =
             cats.firstOrNull { isTransferCategory(it) }

@@ -18,8 +18,8 @@ data class RecurringConfig(
 )
 
 enum class RecurringInterval(val label: String) {
-    DAILY("Ежедневно"),
-    WEEKLY("Еженедельно"),
-    MONTHLY("Ежемесячно"),
-    YEARLY("Ежегодно")
+    DAILY("Daily"),
+    WEEKLY("Weekly"),
+    MONTHLY("Monthly"),
+    YEARLY("Yearly")
 }

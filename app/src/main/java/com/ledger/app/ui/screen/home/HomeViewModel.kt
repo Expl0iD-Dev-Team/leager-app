@@ -7,7 +7,9 @@ import com.ledger.app.LedgerApplication
 import com.ledger.app.domain.model.Account
 import com.ledger.app.domain.model.AccountType
 import com.ledger.app.domain.model.Category
+import com.ledger.app.domain.model.CategoryType
 import com.ledger.app.domain.model.Transaction
+import com.ledger.app.domain.model.TransactionType
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -23,6 +25,10 @@ data class HomeState(
     val todayIncome: Double = 0.0,
     val todayExpense: Double = 0.0,
     val todayOpsCount: Int = 0,
+    val monthIncome: Double = 0.0,
+    val monthExpense: Double = 0.0,
+    /** Sum of monthly budgets of expense categories; 0 when no budgets are set. */
+    val monthBudget: Double = 0.0,
     val isLoading: Boolean = true,
     val showAccountDialog: Boolean = false,
     val editingAccount: Account? = null
@@ -71,9 +77,19 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 val todayIncome = todayTxns.filter { it.amount > 0 }.sumOf { it.amount }
                 val todayExpense = todayTxns.filter { it.amount < 0 }.sumOf { kotlin.math.abs(it.amount) }
 
+                val monthStart = today.withDayOfMonth(1)
+                val monthTxns = transactions.filter { !it.date.isBefore(monthStart) && !it.date.isAfter(today) }
+                val monthIncome = monthTxns.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
+                val monthExpense = monthTxns.filter { it.type == TransactionType.EXPENSE }
+                    .sumOf { kotlin.math.abs(it.amount) }
+                val monthBudget = categories
+                    .filter { it.type == CategoryType.EXPENSE }
+                    .mapNotNull { it.budget }
+                    .sum()
+
                 _state.value.copy(
                     accounts = accounts,
-                    recentTransactions = transactions.take(15),
+                    recentTransactions = transactions.take(6),
                     categories = catMap,
                     accountNames = accMap.mapValues { it.value.name },
                     netWorth = netWorth,
@@ -81,10 +97,17 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     todayIncome = todayIncome,
                     todayExpense = todayExpense,
                     todayOpsCount = todayTxns.size,
+                    monthIncome = monthIncome,
+                    monthExpense = monthExpense,
+                    monthBudget = monthBudget,
                     isLoading = false
                 )
             }.collect { _state.value = it }
         }
+    }
+
+    fun setNetWorthCurrency(currency: String) {
+        viewModelScope.launch { app.prefsManager.setNetWorthCurrency(currency) }
     }
 
     fun openAccountCreate() {

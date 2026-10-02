@@ -1,58 +1,58 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Ledger</string>
+    <string name="app_name">Leager</string>
 
     <!-- Navigation -->
     <string name="nav_home">Home</string>
-    <string name="nav_operations">Ops</string>
+    <string name="nav_operations">Activity</string>
     <string name="nav_add">Add</string>
     <string name="nav_stats">Stats</string>
     <string name="nav_more">More</string>
 
     <!-- Transaction types -->
-    <string name="type_expense">Расход</string>
-    <string name="type_income">Доход</string>
-    <string name="type_transfer">Перевод</string>
+    <string name="type_expense">Expense</string>
+    <string name="type_income">Income</string>
+    <string name="type_transfer">Transfer</string>
 
     <!-- Account types -->
-    <string name="account_type_card">Карта</string>
-    <string name="account_type_cash">Наличные</string>
-    <string name="account_type_deposit">Депозит</string>
-    <string name="account_type_savings">Накопления</string>
+    <string name="account_type_card">Card</string>
+    <string name="account_type_cash">Cash</string>
+    <string name="account_type_deposit">Deposit</string>
+    <string name="account_type_savings">Savings</string>
 
     <!-- Labels -->
-    <string name="label_net_worth">Активы</string>
-    <string name="label_today_in">Приход</string>
-    <string name="label_today_out">Расход</string>
-    <string name="label_today_ops">Операции</string>
-    <string name="label_recent_ops">Последние операции</string>
-    <string name="label_all_accounts">Все счета</string>
-    <string name="label_categories">Категории</string>
-    <string name="label_statistics">Статистика</string>
-    <string name="label_settings">Настройки</string>
+    <string name="label_net_worth">Net worth</string>
+    <string name="label_today_in">Income</string>
+    <string name="label_today_out">Spent</string>
+    <string name="label_today_ops">Operations</string>
+    <string name="label_recent_ops">Recent activity</string>
+    <string name="label_all_accounts">All accounts</string>
+    <string name="label_categories">Categories</string>
+    <string name="label_statistics">Statistics</string>
+    <string name="label_settings">Settings</string>
 
     <!-- PIN -->
-    <string name="pin_enter">Введите PIN</string>
-    <string name="pin_setup">Установите PIN</string>
-    <string name="pin_confirm">Подтвердите PIN</string>
-    <string name="pin_wrong">Неверный PIN</string>
-    <string name="pin_mismatch">PIN не совпадает</string>
-    <string name="biometric_prompt_title">Вход в Ledger</string>
-    <string name="biometric_prompt_subtitle">Подтвердите личность</string>
-    <string name="biometric_prompt_cancel">Использовать PIN</string>
+    <string name="pin_enter">Enter your PIN</string>
+    <string name="pin_setup">Create a PIN</string>
+    <string name="pin_confirm">Confirm your PIN</string>
+    <string name="pin_wrong">Wrong PIN</string>
+    <string name="pin_mismatch">PINs don\'t match</string>
+    <string name="biometric_prompt_title">Unlock Leager</string>
+    <string name="biometric_prompt_subtitle">Confirm it\'s you</string>
+    <string name="biometric_prompt_cancel">Use PIN</string>
 
     <!-- Errors -->
-    <string name="error_empty_amount">Укажите сумму</string>
-    <string name="error_select_category">Выберите категорию</string>
-    <string name="error_select_account">Выберите счёт</string>
+    <string name="error_empty_amount">Enter an amount</string>
+    <string name="error_select_category">Choose a category</string>
+    <string name="error_select_account">Choose an account</string>
 
     <!-- Actions -->
-    <string name="action_save">Сохранить</string>
-    <string name="action_cancel">Отмена</string>
-    <string name="action_delete">Удалить</string>
-    <string name="action_edit">Изменить</string>
-    <string name="action_duplicate">Дублировать</string>
-    <string name="action_add">Добавить</string>
-    <string name="action_back">Назад</string>
-    <string name="action_all">Все</string>
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_duplicate">Duplicate</string>
+    <string name="action_add">Add</string>
+    <string name="action_back">Back</string>
+    <string name="action_all">All</string>
 </resources>
