@@ -17,7 +17,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -25,6 +27,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -735,29 +740,52 @@ fun LedgerDialog(
 ) {
     val c = MaterialTheme.ledger
     val shape = RoundedCornerShape(28.dp)
+    val density = LocalDensity.current
+
+    // Where the app is actually visible on screen, taken from the activity window — its
+    // insets are reliable. The dialog window's own geometry is not: on some Android 15
+    // devices it starts below the status bar yet is as tall as the whole display (and
+    // gets no insets), so its bottom runs off-screen under the gesture bar.
+    val hostRoot = LocalView.current.rootView
+    val bars = WindowInsets.systemBars.union(WindowInsets.displayCutout)
+    val hostTop = IntArray(2).also { hostRoot.getLocationOnScreen(it) }[1]
+    val visibleTop = hostTop + bars.getTop(density)
+    val visibleBottom = hostTop + hostRoot.height - bars.getBottom(density)
+
     Dialog(
         onDismissRequest = onDismiss,
-        // The dialog window is drawn edge-to-edge (Android 15, targetSdk 35); without
-        // decorFitsSystemWindows = false Compose gets zero insets and tall dialogs slide
-        // under the gesture bar. With it, systemBarsPadding()/imePadding() below work.
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
             decorFitsSystemWindows = false
         )
     ) {
-        // Full-window scrim area: centers the card inside the space left by the status /
-        // gesture bars and the keyboard, and dismisses on a tap outside the card.
+        // Measure where the dialog window really is and pad away whatever part of it
+        // lies outside the visible area (or under the keyboard).
+        val dialogRoot = LocalView.current.rootView
+        var windowTop by remember { mutableIntStateOf(hostTop) }
+        var windowBottom by remember { mutableIntStateOf(hostTop + hostRoot.height) }
+        val imeBottom = WindowInsets.ime.getBottom(density)
+        val usableBottom = minOf(visibleBottom, windowBottom - imeBottom)
+        val topPad = with(density) { (visibleTop - windowTop).coerceAtLeast(0).toDp() }
+        val bottomPad = with(density) { (windowBottom - usableBottom).coerceAtLeast(0).toDp() }
+
+        // Full-window scrim area: centers the card in the visible space and dismisses
+        // on a tap outside the card.
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .onGloballyPositioned {
+                    val loc = IntArray(2)
+                    dialogRoot.getLocationOnScreen(loc)
+                    windowTop = loc[1]
+                    windowBottom = loc[1] + dialogRoot.height
+                }
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                     onClick = onDismiss
                 )
-                .systemBarsPadding()
-                .imePadding()
-                .padding(horizontal = 20.dp, vertical = 16.dp),
+                .padding(top = topPad + 16.dp, bottom = bottomPad + 16.dp, start = 20.dp, end = 20.dp),
             contentAlignment = Alignment.Center
         ) {
             // Title and buttons stay fixed; only the body scrolls.

@@ -1,99 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Leager launcher mark: Mint tile (one of the app's accent colors) with a pie chart.
+     Adaptive icon: 108dp canvas, the tile stays inside the 66dp safe zone. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Left eye stalk -->
-    <path android:fillColor="#C5FF4A"
-        android:pathData="M40,22 L46,22 L46,38 L40,38 Z" />
-    <!-- Left eye (square) -->
-    <path android:fillColor="#C5FF4A"
-        android:pathData="M34,10 L46,10 L46,22 L34,22 Z" />
-    <!-- Left pupil -->
-    <path android:fillColor="#0A0A0A"
-        android:pathData="M37,13 L43,13 L43,19 L37,19 Z" />
+    <!-- Rounded tile -->
+    <path
+        android:fillColor="#3DDC97"
+        android:pathData="M44,28 H64 A16,16 0 0 1 80,44 V64 A16,16 0 0 1 64,80 H44 A16,16 0 0 1 28,64 V44 A16,16 0 0 1 44,28 Z" />
 
-    <!-- Right eye stalk -->
-    <path android:fillColor="#C5FF4A"
-        android:pathData="M62,22 L68,22 L68,38 L62,38 Z" />
-    <!-- Right eye (square) -->
-    <path android:fillColor="#C5FF4A"
-        android:pathData="M62,10 L74,10 L74,22 L62,22 Z" />
-    <!-- Right pupil -->
-    <path android:fillColor="#0A0A0A"
-        android:pathData="M65,13 L71,13 L71,19 L65,19 Z" />
+    <!-- Pie: three quarters -->
+    <path
+        android:fillColor="#0F1013"
+        android:pathData="M52,56 L52,40 A16,16 0 1 0 68,56 Z" />
 
-    <!-- Body top connector between eye stalks -->
-    <path android:fillColor="#C5FF4A"
-        android:pathData="M40,38 L68,38 L68,44 L40,44 Z" />
-    <!-- Body main block -->
-    <path android:fillColor="#C5FF4A"
-        android:pathData="M31,44 L77,44 L77,74 L31,74 Z" />
-    <!-- Body bottom row -->
-    <path android:fillColor="#C5FF4A"
-        android:pathData="M37,74 L71,74 L71,80 L37,80 Z" />
-
-    <!-- Left claw upper arm -->
-    <path android:fillColor="#C5FF4A"
-        android:pathData="M7,38 L31,38 L31,50 L7,50 Z" />
-    <!-- Left claw lower arm -->
-    <path android:fillColor="#C5FF4A"
-        android:pathData="M7,58 L31,58 L31,70 L7,70 Z" />
-
-    <!-- Right claw upper arm -->
-    <path android:fillColor="#C5FF4A"
-        android:pathData="M77,38 L101,38 L101,50 L77,50 Z" />
-    <!-- Right claw lower arm -->
-    <path android:fillColor="#C5FF4A"
-        android:pathData="M77,58 L101,58 L101,70 L77,70 Z" />
-
-    <!-- Left legs (staircase blocks) -->
-    <path android:fillColor="#C5FF4A"
-        android:pathData="M25,74 L31,74 L31,80 L25,80 Z" />
-    <path android:fillColor="#C5FF4A"
-        android:pathData="M19,80 L25,80 L25,86 L19,86 Z" />
-    <path android:fillColor="#C5FF4A"
-        android:pathData="M13,86 L19,86 L19,92 L13,92 Z" />
-
-    <!-- Right legs (staircase blocks) -->
-    <path android:fillColor="#C5FF4A"
-        android:pathData="M77,74 L83,74 L83,80 L77,80 Z" />
-    <path android:fillColor="#C5FF4A"
-        android:pathData="M83,80 L89,80 L89,86 L83,86 Z" />
-    <path android:fillColor="#C5FF4A"
-        android:pathData="M89,86 L95,86 L95,92 L89,92 Z" />
-
-    <!-- Coin on body (dark square) -->
-    <path android:fillColor="#0A0A0A"
-        android:pathData="M43,46 L65,46 L65,64 L43,64 Z" />
-
-    <!-- Smile (dark pixel U-shape below coin, inside body) -->
-    <path android:fillColor="#0A0A0A"
-        android:pathData="M43,66 L49,66 L49,74 L43,74 Z" />
-    <path android:fillColor="#0A0A0A"
-        android:pathData="M49,70 L59,70 L59,74 L49,74 Z" />
-    <path android:fillColor="#0A0A0A"
-        android:pathData="M59,66 L65,66 L65,74 L59,74 Z" />
-
-    <!-- Dollar sign: vertical stem through coin -->
-    <path android:fillColor="#C5FF4A"
-        android:pathData="M52,44 L56,44 L56,66 L52,66 Z" />
-    <!-- Dollar sign S: upper hook (goes right) -->
-    <path android:fillColor="#C5FF4A"
-        android:pathData="M52,49 L59,49 L59,51 L52,51 Z" />
-    <!-- Dollar sign S: upper-left bend -->
-    <path android:fillColor="#C5FF4A"
-        android:pathData="M49,51 L52,51 L52,53 L49,53 Z" />
-    <!-- Dollar sign S: middle bar -->
-    <path android:fillColor="#C5FF4A"
-        android:pathData="M49,53 L59,53 L59,55 L49,55 Z" />
-    <!-- Dollar sign S: lower-right bend -->
-    <path android:fillColor="#C5FF4A"
-        android:pathData="M56,55 L59,55 L59,57 L56,57 Z" />
-    <!-- Dollar sign S: lower hook (goes left) -->
-    <path android:fillColor="#C5FF4A"
-        android:pathData="M49,57 L56,57 L56,59 L49,59 Z" />
-
+    <!-- Pie: the pulled-out slice -->
+    <path
+        android:fillColor="#0F1013"
+        android:pathData="M55.5,52.5 L71.5,52.5 A16,16 0 0 0 55.5,36.5 Z" />
 </vector>
