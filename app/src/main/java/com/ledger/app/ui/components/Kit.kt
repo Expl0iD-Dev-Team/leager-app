@@ -737,22 +737,36 @@ fun LedgerDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+        // Title and buttons stay fixed; only the body scrolls, and the card never
+        // goes under the status / gesture bars or the keyboard.
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp)
+                .systemBarsPadding()
+                .imePadding()
+                .padding(horizontal = 20.dp, vertical = 16.dp)
                 .clip(shape)
                 .background(c.surface)
                 .border(1.dp, c.border, shape)
-                .verticalScroll(rememberScrollState())
-                .padding(22.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(vertical = 22.dp)
         ) {
-            Text(title, style = MaterialTheme.typography.titleLarge, color = c.text)
-            content()
+            Text(
+                title,
+                style = MaterialTheme.typography.titleLarge,
+                color = c.text,
+                modifier = Modifier.padding(horizontal = 22.dp)
+            )
+            Column(
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 22.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                content = content
+            )
             if (dismissText != null || (confirmText != null && onConfirm != null)) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     if (dismissText != null) {
