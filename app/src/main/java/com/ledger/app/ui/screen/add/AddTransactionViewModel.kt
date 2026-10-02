@@ -47,12 +47,14 @@ class AddTransactionViewModel(application: Application) : AndroidViewModel(appli
                 app.accountRepo.getActiveAccounts()
             ) { cats, accs -> Pair(cats, accs) }.collect { (cats, accs) ->
                 val current = _state.value
+                val from = current.selectedAccount ?: accs.firstOrNull()
                 _state.value = current.copy(
                     categories = cats,
                     accounts = accs,
-                    selectedAccount = current.selectedAccount ?: accs.firstOrNull(),
-                    selectedCategory = current.selectedCategory
-                        ?: cats.firstOrNull { it.type == categoryTypeFor(current.type) }
+                    selectedAccount = from,
+                    toAccount = resolveToAccount(current.type, from, current.toAccount, accs),
+                    selectedCategory = if (current.type == TransactionType.TRANSFER) findTransferCategory(cats)
+                        else current.selectedCategory ?: defaultCategoryFor(current.type, cats)
                 )
             }
         }
@@ -79,13 +81,25 @@ class AddTransactionViewModel(application: Application) : AndroidViewModel(appli
 
     fun setType(type: TransactionType) {
         val current = _state.value
-        val matchingCat = current.categories.firstOrNull { it.type == categoryTypeFor(type) }
-        _state.value = current.copy(type = type, selectedCategory = matchingCat)
+        _state.value = current.copy(
+            type = type,
+            selectedCategory = defaultCategoryFor(type, current.categories),
+            toAccount = resolveToAccount(type, current.selectedAccount, current.toAccount, current.accounts)
+        )
     }
 
     fun setAmount(text: String) { _state.value = _state.value.copy(amountText = text) }
-    fun setCategory(cat: Category) { _state.value = _state.value.copy(selectedCategory = cat) }
-    fun setAccount(acc: Account) { _state.value = _state.value.copy(selectedAccount = acc) }
+    fun setCategory(cat: Category) {
+        if (_state.value.type == TransactionType.TRANSFER) return
+        _state.value = _state.value.copy(selectedCategory = cat)
+    }
+    fun setAccount(acc: Account) {
+        val current = _state.value
+        _state.value = current.copy(
+            selectedAccount = acc,
+            toAccount = resolveToAccount(current.type, acc, current.toAccount, current.accounts)
+        )
+    }
     fun setToAccount(acc: Account) { _state.value = _state.value.copy(toAccount = acc) }
     fun setNote(note: String) { _state.value = _state.value.copy(note = note) }
     fun setDate(date: LocalDate) { _state.value = _state.value.copy(date = date) }
@@ -98,8 +112,8 @@ class AddTransactionViewModel(application: Application) : AndroidViewModel(appli
             _state.value = s.copy(error = "Укажите корректную сумму")
             return
         }
-        val category = s.selectedCategory
-        if (category == null) {
+        val isTransfer = s.type == TransactionType.TRANSFER
+        if (!isTransfer && s.selectedCategory == null) {
             _state.value = s.copy(error = "Выберите категорию")
             return
         }
@@ -108,14 +122,23 @@ class AddTransactionViewModel(application: Application) : AndroidViewModel(appli
             _state.value = s.copy(error = "Выберите счёт")
             return
         }
-        if (s.type == TransactionType.TRANSFER && s.toAccount == null) {
+        // Destination account only matters for transfers
+        val toAccount = if (isTransfer) s.toAccount else null
+        if (isTransfer && toAccount == null) {
             _state.value = s.copy(error = "Выберите счёт назначения")
+            return
+        }
+        if (isTransfer && toAccount?.id == account.id) {
+            _state.value = s.copy(error = "Счета списания и зачисления совпадают")
             return
         }
 
         _state.value = s.copy(isSaving = true, error = null)
 
         viewModelScope.launch {
+            // Transfers always go to the "Перевод" category
+            val category = if (isTransfer) ensureTransferCategory() else s.selectedCategory!!
+
             val signedAmount = when (s.type) {
                 TransactionType.EXPENSE  -> -amount
                 TransactionType.INCOME   -> amount
@@ -127,7 +150,7 @@ class AddTransactionViewModel(application: Application) : AndroidViewModel(appli
                 type = s.type,
                 categoryId = category.id,
                 accountId = account.id,
-                toAccountId = s.toAccount?.id,
+                toAccountId = toAccount?.id,
                 note = s.note,
                 date = s.date,
                 time = s.time
@@ -146,7 +169,7 @@ class AddTransactionViewModel(application: Application) : AndroidViewModel(appli
 
             // Apply new balance impact
             app.accountRepo.adjustBalance(account.id, signedAmount)
-            s.toAccount?.let { to -> app.accountRepo.adjustBalance(to.id, amount) }
+            toAccount?.let { to -> app.accountRepo.adjustBalance(to.id, amount) }
 
             // Schedule recurring if needed (only for new transactions)
             if (editingId == null && s.recurringInterval != null) {
@@ -157,7 +180,7 @@ class AddTransactionViewModel(application: Application) : AndroidViewModel(appli
                     templateType = s.type,
                     templateCategoryId = category.id,
                     templateAccountId = account.id,
-                    templateToAccountId = s.toAccount?.id,
+                    templateToAccountId = toAccount?.id,
                     templateNote = s.note,
                     interval = s.recurringInterval!!,
                     nextDate = nextDate
@@ -179,5 +202,45 @@ class AddTransactionViewModel(application: Application) : AndroidViewModel(appli
     private fun categoryTypeFor(type: TransactionType): CategoryType = when (type) {
         TransactionType.INCOME   -> CategoryType.INCOME
         else                     -> CategoryType.EXPENSE
+    }
+
+    private fun defaultCategoryFor(type: TransactionType, cats: List<Category>): Category? =
+        if (type == TransactionType.TRANSFER) findTransferCategory(cats)
+        else cats.firstOrNull { it.type == categoryTypeFor(type) && !isTransferCategory(it) }
+
+    /** Keeps the destination account valid: set for transfers, different from the source account. */
+    private fun resolveToAccount(
+        type: TransactionType,
+        from: Account?,
+        current: Account?,
+        accounts: List<Account>
+    ): Account? {
+        if (type != TransactionType.TRANSFER) return current
+        if (current != null && current.id != from?.id && accounts.any { it.id == current.id }) return current
+        return accounts.firstOrNull { it.id != from?.id }
+    }
+
+    private suspend fun ensureTransferCategory(): Category {
+        findTransferCategory(app.categoryRepo.getAll().first())?.let { return it }
+        val created = Category(
+            id = TRANSFER_CATEGORY_ID,
+            name = "Перевод",
+            iconCode = "other",
+            color = "#A0A0A0",
+            type = CategoryType.EXPENSE,
+            sortOrder = 99
+        )
+        app.categoryRepo.save(created)
+        return created
+    }
+
+    companion object {
+        private const val TRANSFER_CATEGORY_ID = "transfer"
+
+        fun isTransferCategory(cat: Category): Boolean =
+            cat.id == TRANSFER_CATEGORY_ID || cat.name.trim().equals("Перевод", ignoreCase = true)
+
+        fun findTransferCategory(cats: List<Category>): Category? =
+            cats.firstOrNull { isTransferCategory(it) }
     }
 }

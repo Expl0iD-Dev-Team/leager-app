@@ -208,31 +208,59 @@ fun AddTransactionScreen(
                 FieldLabel("CATEGORY")
             }
 
-            val displayCats = state.categories.filter {
-                it.type == if (state.type == TransactionType.INCOME) CategoryType.INCOME else CategoryType.EXPENSE
-            }
-            val rows = (displayCats.size + 3) / 4
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                repeat(rows) { row ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        repeat(4) { col ->
-                            val idx = row * 4 + col
-                            if (idx < displayCats.size) {
-                                val cat = displayCats[idx]
-                                CategoryCell(
-                                    category = cat,
-                                    isSelected = cat.id == state.selectedCategory?.id,
-                                    onClick = { vm.setCategory(cat) },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            } else {
-                                Spacer(Modifier.weight(1f))
+            if (state.type == TransactionType.TRANSFER) {
+                // Transfers always use the "Перевод" category — no choice here
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val transferCat = state.selectedCategory
+                    if (transferCat != null) {
+                        CategoryCell(
+                            category = transferCat,
+                            isSelected = true,
+                            onClick = {},
+                            modifier = Modifier.weight(1f)
+                        )
+                    } else {
+                        Text(
+                            "ПЕРЕВОД",
+                            fontFamily = IbmPlexMonoFamily,
+                            fontSize = 11.sp,
+                            letterSpacing = 1.2.sp,
+                            color = c.text,
+                            modifier = Modifier.weight(1f).border(1.dp, c.text).padding(12.dp)
+                        )
+                    }
+                    repeat(3) { Spacer(Modifier.weight(1f)) }
+                }
+            } else {
+                val displayCats = state.categories.filter {
+                    it.type == if (state.type == TransactionType.INCOME) CategoryType.INCOME else CategoryType.EXPENSE
+                }.filterNot { AddTransactionViewModel.isTransferCategory(it) }
+                val rows = (displayCats.size + 3) / 4
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    repeat(rows) { row ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            repeat(4) { col ->
+                                val idx = row * 4 + col
+                                if (idx < displayCats.size) {
+                                    val cat = displayCats[idx]
+                                    CategoryCell(
+                                        category = cat,
+                                        isSelected = cat.id == state.selectedCategory?.id,
+                                        onClick = { vm.setCategory(cat) },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                } else {
+                                    Spacer(Modifier.weight(1f))
+                                }
                             }
                         }
                     }
@@ -349,7 +377,7 @@ private fun AccountPicker(
 ) {
     val c = MaterialTheme.ledger
     var expanded by remember { mutableStateOf(false) }
-    val selected = accounts.find { it.id == selectedId } ?: accounts.firstOrNull()
+    val selected = accounts.find { it.id == selectedId }
 
     Column(modifier = modifier) {
         Row(

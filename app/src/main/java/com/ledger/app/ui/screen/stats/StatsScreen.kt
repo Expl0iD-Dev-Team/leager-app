@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -25,6 +26,8 @@ import com.ledger.app.ui.theme.IbmPlexMonoFamily
 import com.ledger.app.ui.theme.IbmPlexSansFamily
 import com.ledger.app.ui.theme.ledger
 import com.ledger.app.util.formatMoney
+import com.ledger.app.util.formatMoneyFull
+import java.util.Locale
 
 @Composable
 fun StatsScreen(
@@ -258,56 +261,121 @@ fun StatsScreen(
             }
         }
 
-        // Category list (expense)
-        item {
-            Text("КАТЕГОРИИ · ${state.periodLabel}",
-                fontFamily = IbmPlexMonoFamily, fontSize = 10.sp, letterSpacing = 1.4.sp, color = c.faint,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
-        }
-        items(state.categoryBreakdown.take(6)) { item ->
-            val cat = item.category
-            val budget = cat.budget
-            val pct = if (budget != null && budget > 0) (item.spent / budget).toFloat() else 0f
-            val over = pct > 1f
-            val color = parseHexColor(cat.color)
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 10.dp)
-                    .drawBehind {
-                        drawLine(c.border, Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx())
-                    },
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(modifier = Modifier.width(6.dp).height(32.dp).background(color))
-                Spacer(Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(cat.name, fontFamily = IbmPlexSansFamily, fontWeight = FontWeight.Medium,
-                            fontSize = 13.sp, color = c.text)
-                        Text("−${item.spent.formatMoney()}", fontFamily = IbmPlexMonoFamily,
-                            fontSize = 12.sp, color = if (over) c.red else c.text)
-                    }
-                    if (budget != null) {
-                        Box(modifier = Modifier
-                            .fillMaxWidth().height(2.dp)
-                            .background(c.surface2).padding(top = 6.dp)
-                        ) {
-                            Box(modifier = Modifier
-                                .fillMaxWidth(pct.coerceIn(0f, 1f)).fillMaxHeight()
-                                .background(if (over) c.red else color))
-                        }
-                        Text("${(pct * 100).toInt()}% of ${budget.formatMoney()}",
-                            fontFamily = IbmPlexMonoFamily, fontSize = 9.sp,
-                            letterSpacing = 0.6.sp, color = c.faint,
-                            modifier = Modifier.padding(top = 4.dp))
-                    }
-                }
-            }
-        }
+        // Full category lists with exact amounts for the selected period
+        categoryListSection(
+            title = "РАСХОДЫ ПО КАТЕГОРИЯМ · ${state.periodLabel}",
+            total = state.totalExpense,
+            breakdown = state.categoryBreakdown,
+            isExpense = true
+        )
+        categoryListSection(
+            title = "ДОХОДЫ ПО КАТЕГОРИЯМ · ${state.periodLabel}",
+            total = state.totalIncome,
+            breakdown = state.incomeCategoryBreakdown,
+            isExpense = false
+        )
 
         item { Spacer(Modifier.height(80.dp)) }
+    }
+}
+
+private fun LazyListScope.categoryListSection(
+    title: String,
+    total: Double,
+    breakdown: List<CategoryBreakdown>,
+    isExpense: Boolean
+) {
+    item {
+        val c = MaterialTheme.ledger
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(top = 24.dp, bottom = 8.dp)
+                .drawBehind {
+                    drawLine(c.borderStrong, Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx())
+                }
+                .padding(bottom = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom
+        ) {
+            Text(title, fontFamily = IbmPlexMonoFamily, fontSize = 10.sp, letterSpacing = 1.4.sp,
+                color = c.faint, modifier = Modifier.weight(1f))
+            Text("${if (isExpense) "−" else "+"}${total.formatMoneyFull()}",
+                fontFamily = IbmPlexMonoFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp,
+                color = if (isExpense) c.text else c.lime)
+        }
+    }
+    if (breakdown.isEmpty()) {
+        item {
+            val c = MaterialTheme.ledger
+            Text("Нет операций за период", fontFamily = IbmPlexMonoFamily, fontSize = 11.sp,
+                color = c.faint, modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp))
+        }
+    }
+    items(breakdown, key = { "${if (isExpense) "exp" else "inc"}:${it.category.id}" }) { item ->
+        CategoryAmountRow(item, isExpense)
+    }
+}
+
+@Composable
+private fun CategoryAmountRow(item: CategoryBreakdown, isExpense: Boolean) {
+    val c = MaterialTheme.ledger
+    val cat = item.category
+    val budget = if (isExpense) cat.budget else null
+    val budgetPct = if (budget != null && budget > 0) (item.spent / budget).toFloat() else 0f
+    val over = budgetPct > 1f
+    val color = parseHexColor(cat.color)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 10.dp)
+            .drawBehind {
+                drawLine(c.border, Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx())
+            }
+            .padding(bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(modifier = Modifier.width(6.dp).height(32.dp).background(color))
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(cat.name, fontFamily = IbmPlexSansFamily, fontWeight = FontWeight.Medium,
+                    fontSize = 13.sp, color = c.text, modifier = Modifier.weight(1f))
+                Text("${if (isExpense) "−" else "+"}${item.spent.formatMoneyFull()}",
+                    fontFamily = IbmPlexMonoFamily, fontSize = 12.sp,
+                    color = when {
+                        over -> c.red
+                        isExpense -> c.text
+                        else -> c.lime
+                    })
+            }
+            Text(
+                String.format(Locale("ru", "RU"), "%.1f%% от суммы за период", item.pct * 100),
+                fontFamily = IbmPlexMonoFamily, fontSize = 9.sp, letterSpacing = 0.6.sp,
+                color = c.faint, modifier = Modifier.padding(top = 2.dp)
+            )
+            if (budget != null) {
+                Box(modifier = Modifier
+                    .padding(top = 6.dp)
+                    .fillMaxWidth().height(2.dp)
+                    .background(c.surface2)
+                ) {
+                    Box(modifier = Modifier
+                        .fillMaxWidth(budgetPct.coerceIn(0f, 1f)).fillMaxHeight()
+                        .background(if (over) c.red else color))
+                }
+                Text("${(budgetPct * 100).toInt()}% of ${budget.formatMoney()}",
+                    fontFamily = IbmPlexMonoFamily, fontSize = 9.sp,
+                    letterSpacing = 0.6.sp, color = c.faint,
+                    modifier = Modifier.padding(top = 4.dp))
+            }
+        }
     }
 }
 
