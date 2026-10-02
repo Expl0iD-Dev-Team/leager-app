@@ -43,46 +43,165 @@ import com.ledger.app.ui.theme.ledger
 /** Icon for a category: by its built-in icon code first, then guessed from the name. */
 fun categoryIcon(category: Category?): ImageVector {
     if (category == null) return LedgerIcons.Tag
-    return iconForCode(category.iconCode) ?: iconForName(category.name) ?: LedgerIcons.Tag
+    return categoryIcon(category.iconCode, category.name)
 }
 
-private fun iconForCode(code: String): ImageVector? = when (code) {
-    "food"      -> LedgerIcons.Cart
-    "cafe"      -> LedgerIcons.Coffee
-    "transport" -> LedgerIcons.Bus
-    "subs"      -> LedgerIcons.Repeat
-    "health"    -> LedgerIcons.Health
-    "fun"       -> LedgerIcons.Gamepad
-    "home"      -> LedgerIcons.Building
-    "clothes"   -> LedgerIcons.Shirt
-    "salary"    -> LedgerIcons.Briefcase
-    "freelance" -> LedgerIcons.Laptop
-    "gift"      -> LedgerIcons.Gift
-    "transfer"  -> LedgerIcons.Transfer
-    else        -> null // "other" and user-created categories fall back to the name
+/** Icon for an icon code; [AUTO_ICON_CODE] (or an unknown code) guesses it from the name. */
+fun categoryIcon(iconCode: String, name: String): ImageVector =
+    iconForCode(iconCode) ?: iconForName(name) ?: LedgerIcons.Tag
+
+/** Icon code meaning "pick the icon from the category name". */
+const val AUTO_ICON_CODE = "other"
+
+class CategoryIconOption(val code: String, val icon: ImageVector)
+
+/**
+ * Icons a category can be given, in picker order. Codes are stored in Category.iconCode;
+ * the legacy built-in codes (food, cafe, transport, ...) keep their meaning.
+ */
+val CATEGORY_ICON_OPTIONS: List<CategoryIconOption> by lazy {
+    listOf(
+        // Everyday spending
+        CategoryIconOption("food", LedgerIcons.Cart),
+        CategoryIconOption("cafe", LedgerIcons.Coffee),
+        CategoryIconOption("restaurant", LedgerIcons.Utensils),
+        CategoryIconOption("fruit", LedgerIcons.Apple),
+        CategoryIconOption("drinks", LedgerIcons.Wine),
+        CategoryIconOption("shopping", LedgerIcons.ShoppingBag),
+        CategoryIconOption("delivery", LedgerIcons.Package),
+        CategoryIconOption("clothes", LedgerIcons.Shirt),
+        CategoryIconOption("beauty", LedgerIcons.Scissors),
+        CategoryIconOption("care", LedgerIcons.Sparkles),
+        CategoryIconOption("jewelry", LedgerIcons.Gem),
+        // Transport & travel
+        CategoryIconOption("transport", LedgerIcons.Bus),
+        CategoryIconOption("car", LedgerIcons.Car),
+        CategoryIconOption("fuel", LedgerIcons.Fuel),
+        CategoryIconOption("parking", LedgerIcons.Parking),
+        CategoryIconOption("train", LedgerIcons.Train),
+        CategoryIconOption("bike", LedgerIcons.Bike),
+        CategoryIconOption("travel", LedgerIcons.Plane),
+        CategoryIconOption("hotel", LedgerIcons.Bed),
+        CategoryIconOption("outdoors", LedgerIcons.Mountain),
+        CategoryIconOption("vacation", LedgerIcons.Umbrella),
+        // Home & bills
+        CategoryIconOption("home", LedgerIcons.Building),
+        CategoryIconOption("rent", LedgerIcons.Key),
+        CategoryIconOption("utilities", LedgerIcons.Zap),
+        CategoryIconOption("water", LedgerIcons.Droplet),
+        CategoryIconOption("heating", LedgerIcons.Flame),
+        CategoryIconOption("repair", LedgerIcons.Wrench),
+        CategoryIconOption("furniture", LedgerIcons.Sofa),
+        CategoryIconOption("garden", LedgerIcons.Leaf),
+        CategoryIconOption("mobile", LedgerIcons.Smartphone),
+        CategoryIconOption("phone", LedgerIcons.Phone),
+        CategoryIconOption("internet", LedgerIcons.Wifi),
+        CategoryIconOption("subs", LedgerIcons.Repeat),
+        CategoryIconOption("cloud", LedgerIcons.Cloud),
+        CategoryIconOption("software", LedgerIcons.Code),
+        CategoryIconOption("taxes", LedgerIcons.Receipt),
+        CategoryIconOption("insurance", LedgerIcons.Shield),
+        // Leisure, health, family
+        CategoryIconOption("fun", LedgerIcons.Gamepad),
+        CategoryIconOption("tv", LedgerIcons.Tv),
+        CategoryIconOption("movies", LedgerIcons.Film),
+        CategoryIconOption("music", LedgerIcons.Music),
+        CategoryIconOption("events", LedgerIcons.Ticket),
+        CategoryIconOption("photo", LedgerIcons.Camera),
+        CategoryIconOption("books", LedgerIcons.Book),
+        CategoryIconOption("education", LedgerIcons.Study),
+        CategoryIconOption("sport", LedgerIcons.Dumbbell),
+        CategoryIconOption("health", LedgerIcons.Health),
+        CategoryIconOption("pharmacy", LedgerIcons.Pill),
+        CategoryIconOption("kids", LedgerIcons.Baby),
+        CategoryIconOption("pets", LedgerIcons.PawPrint),
+        CategoryIconOption("family", LedgerIcons.Users),
+        CategoryIconOption("charity", LedgerIcons.Heart),
+        CategoryIconOption("celebration", LedgerIcons.Cake),
+        CategoryIconOption("gift", LedgerIcons.Gift),
+        // Money
+        CategoryIconOption("salary", LedgerIcons.Briefcase),
+        CategoryIconOption("freelance", LedgerIcons.Laptop),
+        CategoryIconOption("bonus", LedgerIcons.Trophy),
+        CategoryIconOption("investments", LedgerIcons.TrendingUp),
+        CategoryIconOption("savings", LedgerIcons.PiggyBank),
+        CategoryIconOption("interest", LedgerIcons.Percent),
+        CategoryIconOption("coins", LedgerIcons.Coins),
+        CategoryIconOption("cash", LedgerIcons.Cash),
+        CategoryIconOption("card", LedgerIcons.Card),
+        CategoryIconOption("wallet", LedgerIcons.Wallet),
+        CategoryIconOption("transfer", LedgerIcons.Transfer),
+        CategoryIconOption("star", LedgerIcons.Star),
+        CategoryIconOption("tag", LedgerIcons.Tag)
+    )
 }
+
+private val ICON_BY_CODE: Map<String, ImageVector> by lazy {
+    CATEGORY_ICON_OPTIONS.associate { it.code to it.icon }
+}
+
+private fun iconForCode(code: String): ImageVector? = ICON_BY_CODE[code]
 
 private fun iconForName(name: String): ImageVector? {
     val n = name.lowercase()
     fun has(vararg keys: String) = keys.any { n.contains(it) }
+    // More specific rules first
     return when {
-        has("перевод", "transfer")                                        -> LedgerIcons.Transfer
-        has("продукт", "супермаркет", "еда", "grocer", "food")            -> LedgerIcons.Cart
-        has("кафе", "ресторан", "кофе", "cafe", "coffee", "restaurant")   -> LedgerIcons.Coffee
+        has("перевод", "transfer") -> LedgerIcons.Transfer
+        has("аптек", "лекарств", "pharm", "medicine") -> LedgerIcons.Pill
+        has("ресторан", "restaurant", "обед", "lunch", "dinner") -> LedgerIcons.Utensils
+        has("алкогол", "вино", "пиво", "alcohol", "wine", "beer") -> LedgerIcons.Wine
+        has("фрукт", "овощ", "fruit", "vegetable") -> LedgerIcons.Apple
+        has("продукт", "супермаркет", "еда", "grocer", "food") -> LedgerIcons.Cart
+        has("кафе", "кофе", "cafe", "coffee") -> LedgerIcons.Coffee
+        has("доставк", "маркетплейс", "озон", "ozon", "wildberries", "delivery") -> LedgerIcons.Package
+        has("покупк", "шопинг", "shopping") -> LedgerIcons.ShoppingBag
+        has("самолет", "самолёт", "авиа", "путешеств", "отпуск", "travel", "flight", "trip") -> LedgerIcons.Plane
+        has("отел", "гостиниц", "hotel") -> LedgerIcons.Bed
+        has("поезд", "ржд", "электрич", "train") -> LedgerIcons.Train
+        has("велос", "самокат", "bike", "scooter") -> LedgerIcons.Bike
+        has("парков", "parking") -> LedgerIcons.Parking
         has("транспорт", "такси", "метро", "автобус", "transport", "taxi") -> LedgerIcons.Bus
-        has("топлив", "бенз", "азс", "fuel", "petrol")                    -> LedgerIcons.Fuel
-        has("авто", "машин", "car")                                       -> LedgerIcons.Car
-        has("здоров", "аптек", "медиц", "врач", "стомат", "health", "pharm") -> LedgerIcons.Health
-        has("жкх", "коммун", "электр", "utilit")                          -> LedgerIcons.Zap
-        has("подписк", "subscr")                                          -> LedgerIcons.Repeat
-        has("одежд", "обув", "cloth")                                     -> LedgerIcons.Shirt
-        has("образов", "учеб", "курс", "educat", "study")                 -> LedgerIcons.Study
-        has("досуг", "развлеч", "кино", "игр", "leisure", "entertain")    -> LedgerIcons.Gamepad
-        has("дом", "аренд", "кварт", "ипотек", "home", "rent", "hous")    -> LedgerIcons.Building
-        has("зарплат", "оклад", "salary")                                 -> LedgerIcons.Briefcase
-        has("фриланс", "подработ", "freelance")                           -> LedgerIcons.Laptop
-        has("подар", "gift")                                              -> LedgerIcons.Gift
-        has("кэшбэк", "процент", "дивиден", "cashback", "interest")       -> LedgerIcons.Coins
+        has("топлив", "бенз", "азс", "fuel", "petrol") -> LedgerIcons.Fuel
+        has("авто", "машин", "car") -> LedgerIcons.Car
+        has("спорт", "фитнес", "трениров", "sport", "fitness", "gym") -> LedgerIcons.Dumbbell
+        has("здоров", "медиц", "врач", "стомат", "health", "doctor") -> LedgerIcons.Health
+        has("интернет", "internet") -> LedgerIcons.Wifi
+        has("связь", "мобил", "телефон", "mobile", "phone") -> LedgerIcons.Smartphone
+        has("жкх", "коммун", "электр", "utilit") -> LedgerIcons.Zap
+        has("отоплен", "heating") -> LedgerIcons.Flame
+        has("облак", "cloud") -> LedgerIcons.Cloud
+        has("подписк", "subscr") -> LedgerIcons.Repeat
+        has("одежд", "обув", "cloth") -> LedgerIcons.Shirt
+        has("красот", "салон", "парикмах", "beauty", "hair") -> LedgerIcons.Scissors
+        has("украшен", "ювелир", "jewel") -> LedgerIcons.Gem
+        has("книг", "book") -> LedgerIcons.Book
+        has("образов", "учеб", "курс", "educat", "study", "school") -> LedgerIcons.Study
+        has("кино", "фильм", "movie", "cinema") -> LedgerIcons.Film
+        has("музык", "music") -> LedgerIcons.Music
+        has("концерт", "билет", "театр", "ticket", "concert", "theatre") -> LedgerIcons.Ticket
+        has("фото", "photo") -> LedgerIcons.Camera
+        has("досуг", "развлеч", "игр", "хобби", "leisure", "entertain", "game", "hobby") -> LedgerIcons.Gamepad
+        has("ребен", "ребён", "детск", "дети", "kid", "child", "baby") -> LedgerIcons.Baby
+        has("питом", "животн", "кошк", "собак", "pet") -> LedgerIcons.PawPrint
+        has("семь", "family") -> LedgerIcons.Users
+        has("благотвор", "пожертв", "charity", "donat") -> LedgerIcons.Heart
+        has("день рожд", "праздн", "birthday", "party") -> LedgerIcons.Cake
+        has("страхов", "insurance") -> LedgerIcons.Shield
+        has("налог", "штраф", "tax") -> LedgerIcons.Receipt
+        has("ремонт", "repair") -> LedgerIcons.Wrench
+        has("мебел", "furnit") -> LedgerIcons.Sofa
+        has("растен", "садов", "garden", "plant") -> LedgerIcons.Leaf
+        has("аренд", "rent") -> LedgerIcons.Key
+        has("дом", "кварт", "ипотек", "home", "hous", "mortgage") -> LedgerIcons.Building
+        has("зарплат", "оклад", "salary") -> LedgerIcons.Briefcase
+        has("фриланс", "подработ", "freelance") -> LedgerIcons.Laptop
+        has("бонус", "преми", "bonus") -> LedgerIcons.Trophy
+        has("инвест", "брокер", "invest", "stock") -> LedgerIcons.TrendingUp
+        has("накоплен", "сбереж", "копил", "saving") -> LedgerIcons.PiggyBank
+        has("кэшбэк", "процент", "cashback", "interest") -> LedgerIcons.Percent
+        has("дивиден", "dividend") -> LedgerIcons.Coins
+        has("подар", "gift") -> LedgerIcons.Gift
         else -> null
     }
 }

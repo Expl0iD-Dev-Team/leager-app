@@ -1,16 +1,19 @@
 package com.ledger.app.ui.screen.categories
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -43,7 +46,7 @@ fun CategoriesScreen(
             editTarget = state.editTarget,
             defaultType = state.selectedTab,
             onDismiss = vm::dismissDialog,
-            onSave = { name, type, color, budget -> vm.saveCategory(name, type, color, budget) },
+            onSave = { name, type, color, budget, iconCode -> vm.saveCategory(name, type, color, budget, iconCode) },
             onDelete = state.editTarget?.let { cat -> { vm.deleteCategory(cat) } }
         )
     }
@@ -177,7 +180,7 @@ private fun CategoryDialog(
     editTarget: Category?,
     defaultType: CategoryType,
     onDismiss: () -> Unit,
-    onSave: (name: String, type: CategoryType, color: String, budget: Double?) -> Unit,
+    onSave: (name: String, type: CategoryType, color: String, budget: Double?, iconCode: String) -> Unit,
     onDelete: (() -> Unit)? = null
 ) {
     val c = MaterialTheme.ledger
@@ -189,6 +192,7 @@ private fun CategoryDialog(
     var budgetText by remember(editTarget) {
         mutableStateOf(editTarget?.budget?.let { "%.0f".format(it) } ?: "")
     }
+    var iconCode by remember(editTarget) { mutableStateOf(editTarget?.iconCode ?: AUTO_ICON_CODE) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
     if (showDeleteConfirm) {
@@ -212,8 +216,23 @@ private fun CategoryDialog(
         title = if (isEditing) "Edit category" else "New category",
         onDismiss = onDismiss,
         confirmText = "Save",
-        onConfirm = { onSave(name, type, color, budgetText.toDoubleOrNull()) }
+        onConfirm = { onSave(name, type, color, budgetText.toDoubleOrNull(), iconCode) }
     ) {
+        // Live preview of how the category will look in lists
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconBubble(categoryIcon(iconCode, name), parseHexColor(color), size = 52.dp, corner = 17.dp)
+            Spacer(Modifier.width(14.dp))
+            Column {
+                Text(
+                    name.ifBlank { "Category name" },
+                    fontFamily = AppFont, fontWeight = FontWeight.Bold, fontSize = 16.sp,
+                    color = if (name.isBlank()) c.faint else c.text,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis
+                )
+                Text(type.label, fontFamily = AppFont, fontWeight = FontWeight.Medium, fontSize = 13.sp, color = c.muted)
+            }
+        }
+
         LedgerTextField(value = name, onValueChange = { name = it }, label = "Name", placeholder = "e.g. Groceries")
 
         FormSection("Type") {
@@ -239,6 +258,15 @@ private fun CategoryDialog(
             ColorPicker(selected = color, onSelect = { color = it })
         }
 
+        FormSection("Icon") {
+            IconPicker(
+                selected = iconCode,
+                name = name,
+                color = parseHexColor(color),
+                onSelect = { iconCode = it }
+            )
+        }
+
         if (type == CategoryType.EXPENSE) {
             LedgerTextField(
                 value = budgetText,
@@ -261,6 +289,64 @@ private fun CategoryDialog(
                     .clickable { showDeleteConfirm = true }
                     .padding(vertical = 4.dp)
             )
+        }
+    }
+}
+
+/** "Auto" (icon guessed from the name) plus a grid of every assignable icon. */
+@Composable
+private fun IconPicker(
+    selected: String,
+    name: String,
+    color: Color,
+    onSelect: (String) -> Unit
+) {
+    val c = MaterialTheme.ledger
+    val isAuto = CATEGORY_ICON_OPTIONS.none { it.code == selected }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .background(if (isAuto) c.accentSoft else c.surface2)
+                .then(if (isAuto) Modifier.border(2.dp, c.accent, RoundedCornerShape(12.dp)) else Modifier)
+                .clickable { onSelect(AUTO_ICON_CODE) }
+                .padding(horizontal = 12.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                categoryIcon(AUTO_ICON_CODE, name),
+                contentDescription = null,
+                tint = if (isAuto) color else c.muted,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text("Auto · by name", fontFamily = AppFont, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = c.text)
+        }
+
+        CATEGORY_ICON_OPTIONS.chunked(6).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { option ->
+                    val on = option.code == selected
+                    val shape = RoundedCornerShape(12.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(shape)
+                            .background(if (on) color.copy(alpha = 0.18f) else c.surface2)
+                            .then(if (on) Modifier.border(2.dp, color, shape) else Modifier)
+                            .clickable { onSelect(option.code) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            option.icon,
+                            contentDescription = option.code,
+                            tint = if (on) color else c.muted,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
         }
     }
 }

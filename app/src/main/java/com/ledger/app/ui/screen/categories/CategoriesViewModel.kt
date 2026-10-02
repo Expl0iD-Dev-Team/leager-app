@@ -94,21 +94,22 @@ class CategoriesViewModel(application: Application) : AndroidViewModel(applicati
         name: String,
         type: CategoryType,
         color: String,
-        budget: Double?
+        budget: Double?,
+        iconCode: String
     ) {
         val trimmed = name.trim()
         if (trimmed.isBlank()) return
         viewModelScope.launch {
             val existing = _state.value.editTarget
             if (existing != null) {
-                app.categoryRepo.update(existing.copy(name = trimmed, color = color, budget = budget))
+                app.categoryRepo.update(existing.copy(name = trimmed, color = color, budget = budget, iconCode = iconCode))
             } else {
                 val nextOrder = (_state.value.expenseCategories + _state.value.incomeCategories).size
                 app.categoryRepo.save(
                     Category(
                         id = UUID.randomUUID().toString(),
                         name = trimmed,
-                        iconCode = "other",
+                        iconCode = iconCode,
                         color = color,
                         type = type,
                         budget = budget,

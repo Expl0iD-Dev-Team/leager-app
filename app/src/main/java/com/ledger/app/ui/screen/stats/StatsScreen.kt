@@ -77,9 +77,11 @@ fun StatsScreen() {
                             onDragStart = { swipe = 0f },
                             onHorizontalDrag = { _, drag -> swipe += drag },
                             onDragEnd = {
+                                // Page-like, matching the arrows: drag the chart to the left to bring in
+                                // the next period (as ›), drag it to the right for the previous one (as ‹)
                                 when {
-                                    swipe < -80f -> vm.shiftPeriod(-1)
-                                    swipe > 80f  -> vm.shiftPeriod(1)
+                                    swipe < -80f -> vm.shiftPeriod(1)
+                                    swipe > 80f  -> vm.shiftPeriod(-1)
                                 }
                                 swipe = 0f
                             },
