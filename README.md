@@ -1,14 +1,18 @@
 # Leager — Personal Finance Tracker
 
-A minimalist personal finance app for Android, built with Jetpack Compose. Track expenses, income, and transfers across multiple accounts with category budgets, recurring transactions, statistics, and optional PIN/biometric lock.
+A personal finance app for Android, built with Jetpack Compose. Track expenses, income and transfers across multiple accounts with category budgets, recurring operations, detailed statistics and an optional PIN / biometric lock.
+
+The UI follows the **Soft Fintech** design: rounded cards, line icons, a floating bottom bar, dark / light themes and a user-selectable accent color.
 
 ---
 
 ## Features
 
-- **Transactions** — expense, income, transfer; search and filter by date
-- **Accounts** — multiple accounts with balance tracking and sparkline history
-- **Categories** — custom categories with 64-color palette, budget limits, and deletion
+- **Home** — total balance (RUB / USD / EUR, can be hidden), this month's income and spending, quick actions, account cards, monthly budget progress, recent activity
+- **Operations** — expense, income, transfer; transfers always get the *Transfer* category automatically; optional repeat (daily / weekly / monthly / yearly)
+- **Activity** — search by note, category or amount; filter by type; month totals; grouped by day with a daily net
+- **Accounts** — card, cash, deposit and savings accounts; colors; “include in net worth” toggle; archiving
+- **Categories** — 68 line icons (or *Auto* — picked from the name), 20 distinct colors, monthly budgets with progress bars
 - **Statistics**
   - Expense / income donut with daily average and change vs the previous period
   - Full per-category lists with exact amounts, share and operation count
@@ -20,6 +24,7 @@ A minimalist personal finance app for Android, built with Jetpack Compose. Track
 - **Recurring transactions** — daily / weekly / monthly / yearly templates via WorkManager
 - **Security** — 4-digit PIN with SHA-256 hashing, optional biometric (fingerprint / face) unlock
 - **Themes** — dark, light or follow the system; six accent colors (Lime, Violet, Blue, Coral, Mint, Amber)
+- **English UI** — your own data (account / category names, notes) stays as you entered it
 - **Offline-first** — all data stored locally in Room (SQLite); no network required
 
 ---
@@ -28,10 +33,14 @@ A minimalist personal finance app for Android, built with Jetpack Compose. Track
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/home.png" width="200" alt="Home"/><br/><sub>Home</sub></td>
-    <td align="center"><img src="docs/screenshots/add.png" width="200" alt="Add transaction"/><br/><sub>Add transaction</sub></td>
-    <td align="center"><img src="docs/screenshots/stats.png" width="200" alt="Statistics"/><br/><sub>Statistics</sub></td>
-    <td align="center"><img src="docs/screenshots/settings.png" width="200" alt="Settings"/><br/><sub>Settings</sub></td>
+    <td align="center"><img src="docs/screenshots/home.webp" width="200" alt="Home"/><br/><sub>Home</sub></td>
+    <td align="center"><img src="docs/screenshots/activity.webp" width="200" alt="Activity"/><br/><sub>Activity</sub></td>
+    <td align="center"><img src="docs/screenshots/add.webp" width="200" alt="New operation"/><br/><sub>New operation</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/stats.webp" width="200" alt="Statistics"/><br/><sub>Statistics</sub></td>
+    <td align="center"><img src="docs/screenshots/category.webp" width="200" alt="Category editor"/><br/><sub>Category editor</sub></td>
+    <td align="center"><img src="docs/screenshots/settings.webp" width="200" alt="Settings"/><br/><sub>Settings</sub></td>
   </tr>
 </table>
 
@@ -68,7 +77,7 @@ A sample two-year dataset with realistic Russian household transactions is provi
 | Background work | WorkManager (CoroutineWorker) |
 | Preferences | Jetpack DataStore |
 | Security | AndroidX Biometric + SHA-256 |
-| Fonts | IBM Plex Mono, IBM Plex Sans (Google Fonts) |
+| Fonts | Manrope (downloadable Google Font, full Cyrillic) |
 | Min SDK | 26 (Android 8.0) |
 | Target SDK | 35 (Android 15) |
 | Language | Kotlin 2.0 / JVM 17 |
@@ -81,7 +90,7 @@ A sample two-year dataset with realistic Russian household transactions is provi
 app/src/main/java/com/ledger/app/
 │
 ├── LedgerApplication.kt          # Application class — DI root, repo init, WorkManager
-├── MainActivity.kt               # Single activity; splash, theme, PIN gate, file picker
+├── MainActivity.kt               # Single activity; splash, theme + system bars, PIN gate, file picker
 │
 ├── domain/model/                 # Pure Kotlin data classes — no Android deps
 │   ├── Account.kt
@@ -91,13 +100,13 @@ app/src/main/java/com/ledger/app/
 │
 ├── data/
 │   ├── db/
-│   │   ├── LedgerDatabase.kt     # Room database (version 2)
+│   │   ├── LedgerDatabase.kt     # Room database (version 3)
 │   │   ├── entity/               # Room @Entity classes + toDomain() / fromDomain()
 │   │   └── dao/                  # @Dao interfaces (queries, aggregates)
 │   ├── repository/               # Repository layer; wraps DAOs, exposes Flow / suspend
 │   ├── CsvImporter.kt            # CSV parser — upserts accounts, categories, transactions
 │   └── prefs/
-│       └── PrefsManager.kt       # DataStore — theme, exchange rates, net-worth currency
+│       └── PrefsManager.kt       # DataStore — theme mode, accent color, exchange rates, net-worth currency
 │
 ├── security/
 │   └── SecurityManager.kt        # PIN hash storage + biometric flag (DataStore)
@@ -126,15 +135,15 @@ app/src/main/java/com/ledger/app/
     ├── navigation/
     │   └── NavGraph.kt           # LedgerNavHost + Routes constants
     └── screen/
-        ├── home/                 # Dashboard — net worth, today summary, recent ops
-        ├── transactions/         # Full transaction list with search
-        ├── add/                  # Add / edit transaction form
-        ├── detail/               # Transaction detail + delete / duplicate
-        ├── accounts/             # Account list with net worth and quick stats
-        ├── categories/           # Category list with budget bars and deletion
-        ├── stats/                # Statistics — donuts, bar chart, heatmap, period nav
+        ├── home/                 # Dashboard — balance card, quick actions, accounts, budget, recent activity
+        ├── transactions/         # Activity — search, type filters, month totals, grouped by day
+        ├── add/                  # Add / edit operation (transfers get the Transfer category)
+        ├── detail/               # Operation detail + edit / duplicate / delete
+        ├── accounts/             # Account list with net worth, shares and month totals
+        ├── categories/           # Categories with budgets; icon, color and budget editor
+        ├── stats/                # Statistics — donut, trend, heatmap, per-category amounts
         ├── pin/                  # PIN entry + setup (VERIFY / SET / CONFIRM modes)
-        └── settings/             # Theme, PIN, biometric, CSV import/export, data reset
+        └── settings/             # Theme & accent, accounts / categories, currency, CSV, PIN & biometrics
 ```
 
 ---
@@ -154,12 +163,12 @@ app/src/main/java/com/ledger/app/
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/<your-username>/ledger-app.git
-   cd ledger-app
+   git clone https://github.com/Expl0iD-Dev-Team/leager-app.git
+   cd leager-app
    ```
 
 2. **Open in Android Studio**
-   - Launch Android Studio → **File → Open** → select the `ledger-app` folder
+   - Launch Android Studio → **File → Open** → select the `leager-app` folder
    - Wait for Gradle sync to complete (first sync downloads ~300 MB of dependencies)
 
 3. **Run on a device or emulator**
@@ -234,12 +243,12 @@ UI (Compose Screens)
 
 | Table | Key columns |
 |-------|-------------|
-| `accounts` | `id`, `name`, `type`, `balance`, `currency`, `color`, `isActive` |
-| `categories` | `id`, `name`, `type` (EXPENSE/INCOME), `color`, `budget` |
+| `accounts` | `id`, `name`, `type`, `balance`, `currency`, `color`, `last4`, `isArchived`, `includeInTotal` |
+| `categories` | `id`, `name`, `type` (EXPENSE/INCOME), `iconCode`, `color`, `budget` |
 | `transactions` | `id`, `amount`, `type`, `categoryId`, `accountId`, `toAccountId`, `dateEpochDay`, `timeMinuteOfDay`, `note` |
 | `recurring_configs` | `id`, template fields mirroring transactions, `interval`, `intervalCount`, `nextDateEpochDay`, `isActive` |
 
-Room database version: **2**. `fallbackToDestructiveMigration()` is enabled — reinstalling resets the database.
+Room database version: **3**. `fallbackToDestructiveMigration()` is enabled — reinstalling resets the database.
 
 ---
 
