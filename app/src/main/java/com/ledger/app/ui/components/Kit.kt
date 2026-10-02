@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -16,6 +17,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -735,50 +737,74 @@ fun LedgerDialog(
     val shape = RoundedCornerShape(28.dp)
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        // The dialog window is drawn edge-to-edge (Android 15, targetSdk 35); without
+        // decorFitsSystemWindows = false Compose gets zero insets and tall dialogs slide
+        // under the gesture bar. With it, systemBarsPadding()/imePadding() below work.
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
     ) {
-        // Title and buttons stay fixed; only the body scrolls, and the card never
-        // goes under the status / gesture bars or the keyboard.
-        Column(
+        // Full-window scrim area: centers the card inside the space left by the status /
+        // gesture bars and the keyboard, and dismisses on a tap outside the card.
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onDismiss
+                )
                 .systemBarsPadding()
                 .imePadding()
-                .padding(horizontal = 20.dp, vertical = 16.dp)
-                .clip(shape)
-                .background(c.surface)
-                .border(1.dp, c.border, shape)
-                .padding(vertical = 22.dp)
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Text(
-                title,
-                style = MaterialTheme.typography.titleLarge,
-                color = c.text,
-                modifier = Modifier.padding(horizontal = 22.dp)
-            )
+            // Title and buttons stay fixed; only the body scrolls.
             Column(
                 modifier = Modifier
-                    .weight(1f, fill = false)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 22.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                content = content
-            )
-            if (dismissText != null || (confirmText != null && onConfirm != null)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    if (dismissText != null) {
-                        DialogButton(dismissText, onDismiss, Modifier.weight(1f), ButtonKind.SECONDARY)
-                    }
-                    if (confirmText != null && onConfirm != null) {
-                        DialogButton(
-                            confirmText,
-                            onConfirm,
-                            Modifier.weight(1f),
-                            if (destructive) ButtonKind.DANGER else ButtonKind.PRIMARY
-                        )
+                    .fillMaxWidth()
+                    .clip(shape)
+                    .background(c.surface)
+                    .border(1.dp, c.border, shape)
+                    // Swallow taps on the card so they don't reach the scrim
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {}
+                    )
+                    .padding(vertical = 22.dp)
+            ) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = c.text,
+                    modifier = Modifier.padding(horizontal = 22.dp)
+                )
+                Column(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 22.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    content = content
+                )
+                if (dismissText != null || (confirmText != null && onConfirm != null)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        if (dismissText != null) {
+                            DialogButton(dismissText, onDismiss, Modifier.weight(1f), ButtonKind.SECONDARY)
+                        }
+                        if (confirmText != null && onConfirm != null) {
+                            DialogButton(
+                                confirmText,
+                                onConfirm,
+                                Modifier.weight(1f),
+                                if (destructive) ButtonKind.DANGER else ButtonKind.PRIMARY
+                            )
+                        }
                     }
                 }
             }

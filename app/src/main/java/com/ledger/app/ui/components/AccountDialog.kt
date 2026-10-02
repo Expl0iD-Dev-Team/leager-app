@@ -32,14 +32,19 @@ fun ColorPicker(
     colors: List<String> = CATEGORY_PALETTE
 ) {
     val c = MaterialTheme.ledger
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        colors.chunked(7).forEach { rowColors ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    val perRow = 7
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        colors.chunked(perRow).forEach { rowColors ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 rowColors.forEach { hex ->
                     val sel = selected.equals(hex, ignoreCase = true)
                     Box(
                         modifier = Modifier
-                            .size(34.dp)
+                            .weight(1f)
+                            .aspectRatio(1f)
                             .clip(CircleShape)
                             .border(2.dp, if (sel) c.text else Color.Transparent, CircleShape)
                             .clickable { onSelect(hex) }
@@ -48,6 +53,8 @@ fun ColorPicker(
                             .background(parseHexColor(hex))
                     )
                 }
+                // Keep the last, shorter row on the same grid
+                repeat(perRow - rowColors.size) { Spacer(Modifier.weight(1f)) }
             }
         }
     }

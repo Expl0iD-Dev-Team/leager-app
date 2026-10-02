@@ -324,14 +324,19 @@ private fun IconPicker(
             Text("Auto · by name", fontFamily = AppFont, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = c.text)
         }
 
-        CATEGORY_ICON_OPTIONS.chunked(6).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        val perRow = 7
+        CATEGORY_ICON_OPTIONS.chunked(perRow).forEach { row ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 row.forEach { option ->
                     val on = option.code == selected
                     val shape = RoundedCornerShape(12.dp)
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
+                            .weight(1f)
+                            .aspectRatio(1f)
                             .clip(shape)
                             .background(if (on) color.copy(alpha = 0.18f) else c.surface2)
                             .then(if (on) Modifier.border(2.dp, color, shape) else Modifier)
@@ -346,6 +351,8 @@ private fun IconPicker(
                         )
                     }
                 }
+                // Keep the last, shorter row on the same grid
+                repeat(perRow - row.size) { Spacer(Modifier.weight(1f)) }
             }
         }
     }
